@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: siclo-reservations-api
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+      show-sql: true
+      jdbc:
+        batch_size: 100
+        batch_versioned_data: true
+      order_inserts: true
+      order_updates: true
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+logging:
+  level:
+    root: INFO
+    org.creati.sicloReservationsApi: INFO
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000 # 24 hours in ms
+
+auth:
+  jwt:
+    enabled: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /siclo/api
