@@ -19,7 +19,7 @@ import java.time.ZoneId;
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Table(name = "column_mapping")
-public class ExcelColumnMapping {
+public class ColumnMapping {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,7 +33,7 @@ public class ExcelColumnMapping {
     private String fieldName;
 
     @Column(name = "source_field", nullable = false)
-    private String excelHeader;
+    private String sourceField;
 
     @Column(name = "file_extension", nullable = false)
     private String fileExtension;
@@ -50,7 +50,7 @@ public class ExcelColumnMapping {
                 .mappingId(this.getMappingId())
                 .fileType(this.getFileType())
                 .fieldName(this.getFieldName())
-                .excelHeader(this.getExcelHeader())
+                .excelHeader(this.getSourceField())
                 .required(this.isRequired())
                 .dataType(this.getDataType())
                 .createdAt(LocalDateTime.ofInstant(this.getCreatedAt(), ZoneId.of("America/Lima")))

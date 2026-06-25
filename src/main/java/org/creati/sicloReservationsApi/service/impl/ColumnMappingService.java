@@ -3,7 +3,7 @@ package org.creati.sicloReservationsApi.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.creati.sicloReservationsApi.auth.exception.ResourceNotFoundException;
 import org.creati.sicloReservationsApi.dao.postgre.ExcelColumnMappingRepository;
-import org.creati.sicloReservationsApi.dao.postgre.model.ExcelColumnMapping;
+import org.creati.sicloReservationsApi.dao.postgre.model.ColumnMapping;
 import org.creati.sicloReservationsApi.service.model.mapping.BulkUpdateColumnMappingRequest;
 import org.creati.sicloReservationsApi.service.model.mapping.ColumnMappingDto;
 import org.creati.sicloReservationsApi.service.model.job.ProcessingResult;
@@ -31,32 +31,32 @@ public class ColumnMappingService {
 
     public List<ColumnMappingDto> getAllMappings() {
         return columnMappingRepository.findAll().stream()
-                .map(ExcelColumnMapping::toDto)
+                .map(ColumnMapping::toDto)
                 .toList();
     }
 
     public List<ColumnMappingDto> getMappingsByFileType(String fileType) {
         return columnMappingRepository.findByFileType(fileType).stream()
-                .map(ExcelColumnMapping::toDto)
+                .map(ColumnMapping::toDto)
                 .toList();
     }
 
     public ColumnMappingDto getMappingById(Long id) {
         return columnMappingRepository.findById(id)
-                .map(ExcelColumnMapping::toDto)
+                .map(ColumnMapping::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Excel column mapping not found with id: " + id));
     }
 
     public ColumnMappingDto updateMapping(Long id, UpdateColumnMappingRequest updateRequest) {
-        ExcelColumnMapping existingMapping = columnMappingRepository.findById(id)
+        ColumnMapping existingMapping = columnMappingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Excel column mapping not found with id: " + id));
 
-        ExcelColumnMapping mappingModified = existingMapping.toBuilder()
-                .excelHeader(updateRequest.getExcelHeader())
+        ColumnMapping mappingModified = existingMapping.toBuilder()
+                .sourceField(updateRequest.getExcelHeader())
                 .required(updateRequest.getRequired())
                 .build();
 
-        ExcelColumnMapping updatedMapping = columnMappingRepository.save(mappingModified);
+        ColumnMapping updatedMapping = columnMappingRepository.save(mappingModified);
         return updatedMapping.toDto();
     }
 
@@ -68,11 +68,11 @@ public class ColumnMappingService {
 
         for (BulkUpdateColumnMappingRequest request : updateRequests) {
             try {
-                ExcelColumnMapping existingMapping = columnMappingRepository.findById(request.getMappingId())
+                ColumnMapping existingMapping = columnMappingRepository.findById(request.getMappingId())
                         .orElseThrow(() -> new ResourceNotFoundException("Excel column mapping not found with id: " + request.getMappingId()));
 
-                ExcelColumnMapping mappingModified = existingMapping.toBuilder()
-                        .excelHeader(request.getExcelHeader())
+                ColumnMapping mappingModified = existingMapping.toBuilder()
+                        .sourceField(request.getExcelHeader())
                         .required(request.getRequired())
                         .build();
 
@@ -97,11 +97,11 @@ public class ColumnMappingService {
     }
 
     public Map<String, String> getHeaderToFieldMapping(String fileType, String fileExtension) {
-        List<ExcelColumnMapping> mappings = columnMappingRepository.findByFileTypeAndFileExtension(fileType, fileExtension);
+        List<ColumnMapping> mappings = columnMappingRepository.findByFileTypeAndFileExtension(fileType, fileExtension);
         Map<String, String> headerToFieldMap = new HashMap<>();
 
-        for (ExcelColumnMapping mapping: mappings) {
-            String excelHeaderGroup = mapping.getExcelHeader();
+        for (ColumnMapping mapping: mappings) {
+            String excelHeaderGroup = mapping.getSourceField();
             String fieldName = mapping.getFieldName();
 
             String[] splitHeaders = excelHeaderGroup.split(";");
@@ -119,8 +119,8 @@ public class ColumnMappingService {
     public Boolean validateRequiredHeaders(Set<String> excelInputHeaders, String fileType, String fileExtension) {
 
         // Get required headers
-        List<ExcelColumnMapping> requiredMappings = columnMappingRepository.findByFileTypeAndFileExtension(fileType, fileExtension).stream()
-                .filter(ExcelColumnMapping::isRequired)
+        List<ColumnMapping> requiredMappings = columnMappingRepository.findByFileTypeAndFileExtension(fileType, fileExtension).stream()
+                .filter(ColumnMapping::isRequired)
                 .toList();
 
         // Normalized input headers
@@ -129,7 +129,7 @@ public class ColumnMappingService {
                 .collect(Collectors.toSet());
 
         List<String> missingHeaders = requiredMappings.stream()
-                .map(ExcelColumnMapping::getExcelHeader)
+                .map(ColumnMapping::getSourceField)
                 .filter(excelHeader ->
                         Arrays.stream(excelHeader.split(";"))
                                 .map(String::trim)
