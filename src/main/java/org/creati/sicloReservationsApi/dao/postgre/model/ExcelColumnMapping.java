@@ -35,6 +35,9 @@ public class ExcelColumnMapping {
     @Column(name = "source_field", nullable = false)
     private String excelHeader;
 
+    @Column(name = "file_extension", nullable = false)
+    private String fileExtension;
+
     private boolean required;
 
     private String dataType;

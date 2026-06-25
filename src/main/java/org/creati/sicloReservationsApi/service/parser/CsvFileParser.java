@@ -47,7 +47,7 @@ public class CsvFileParser implements FileParser {
             int batchSize,
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
-        Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType());
+        Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType(), request.extension());
 
         CSVFormat format = CSVFormat.DEFAULT.builder()
                 .setHeader()
@@ -60,7 +60,7 @@ public class CsvFileParser implements FileParser {
              CSVParser csvParser = new CSVParser(reader, format)) {
 
             Set<String> csvHeaders = new HashSet<>(csvParser.getHeaderNames());
-            if (!columnMappingService.validateRequiredHeaders(csvHeaders, request.fileType())) {
+            if (!columnMappingService.validateRequiredHeaders(csvHeaders, request.fileType(), request.extension())) {
                 throw new IllegalArgumentException("Missing required headers in the CSV file.");
             }
 

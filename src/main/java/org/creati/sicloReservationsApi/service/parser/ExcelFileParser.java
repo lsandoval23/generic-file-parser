@@ -33,10 +33,13 @@ public class ExcelFileParser implements FileParser {
 
     private final ColumnMappingService columnMappingService;
     private final RowMapper rowMapper;
+    private final FileParserProperties fileParserProperties;
 
-    public ExcelFileParser(ColumnMappingService columnMappingService, RowMapper rowMapper) {
+    public ExcelFileParser(ColumnMappingService columnMappingService, RowMapper rowMapper,
+                           FileParserProperties fileParserProperties) {
         this.columnMappingService = columnMappingService;
         this.rowMapper = rowMapper;
+        this.fileParserProperties = fileParserProperties;
     }
 
     @Override
@@ -53,9 +56,10 @@ public class ExcelFileParser implements FileParser {
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
         try (Workbook workbook = createStreamingWorkbook(file)) {
-            Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType());
+            Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType(), request.extension());
 
-            Sheet sheet = Optional.ofNullable(request.sourceHint())
+            String sheetName = fileParserProperties.resolve(request.fileType(), request.extension());
+            Sheet sheet = Optional.ofNullable(sheetName)
                     .map(workbook::getSheet)
                     .orElse(workbook.getSheetAt(0));
 
@@ -68,7 +72,7 @@ public class ExcelFileParser implements FileParser {
             Set<String> excelHeaders = new HashSet<>();
             headerRow.forEach(cell -> excelHeaders.add(getCellStringValue(cell)));
 
-            if (!columnMappingService.validateRequiredHeaders(excelHeaders, request.fileType())) {
+            if (!columnMappingService.validateRequiredHeaders(excelHeaders, request.fileType(), request.extension())) {
                 throw new IllegalArgumentException("Missing required headers in the Excel file.");
             }
 

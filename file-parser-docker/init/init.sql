@@ -145,8 +145,9 @@ CREATE TABLE column_mapping (
     source_field    VARCHAR(255) NOT NULL,
     required        BOOLEAN DEFAULT FALSE,
     data_type       VARCHAR(50) DEFAULT 'STRING',
+    file_extension  VARCHAR(10) NOT NULL,
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(file_type, field_name)
+    UNIQUE(file_type, field_name, file_extension)
 );
 
 -- Add indexes
@@ -384,41 +385,102 @@ SELECT u.id, r.id FROM users u, roles r
 WHERE u.username = 'admin' AND r.name = 'ADMIN';
 
 
--- Add initial mappings for payment transactions
-INSERT INTO column_mapping (file_type, field_name, source_field, required, data_type) VALUES
-('PAYMENT', 'month', 'Mes', true, 'INTEGER'),
-('PAYMENT', 'day', 'dia', true, 'INTEGER'),
-('PAYMENT', 'week', 'semana', false, 'INTEGER'),
-('PAYMENT', 'purchaseDate', 'Fecha de compra (date_created)', true, 'DATE'),
-('PAYMENT', 'accreditationDate', 'Fecha de acreditación (date_approved)', true, 'DATE'),
-('PAYMENT', 'releaseDate', 'Fecha de liberación del dinero (date_released)', false, 'DATE'),
-('PAYMENT', 'clientEmail', 'E-mail de la contraparte (counterpart_email)', true, 'STRING'),
-('PAYMENT', 'phone', 'Teléfono de la contraparte (counterpart_phone_number)', false, 'STRING'),
-('PAYMENT', 'documentId', 'Documento de la contraparte (buyer_document)', false, 'STRING'),
-('PAYMENT', 'operationId', 'Número de operación de Mercado Pago (operation_id)', true, 'LONG'),
-('PAYMENT', 'status', 'Estado de la operación (status)', true, 'STRING'),
-('PAYMENT', 'operationType', 'Tipo de operación (operation_type)', true, 'STRING'),
-('PAYMENT', 'productValue', 'Valor del producto (transaction_amount)', true, 'DECIMAL'),
-('PAYMENT', 'transactionFee', 'Tarifa de Mercado Pago (mercadopago_fee)', true, 'DECIMAL'),
-('PAYMENT', 'amountReceived', 'Monto recibido (net_received_amount)', true, 'DECIMAL'),
-('PAYMENT', 'installments', 'Cuotas (installments)', false, 'INTEGER'),
-('PAYMENT', 'paymentMethod', 'Medio de pago (payment_type)', true, 'STRING'),
-('PAYMENT', 'packageName', 'paquete', false, 'STRING'),
-('PAYMENT', 'classCount', 'N° de clases', false, 'INTEGER');
+-- ============================================================================
+-- Column mappings (per file extension)
+--
+-- Each (file_type, field_name) is mapped per file_extension. The xlsx/csv/json
+-- formats reuse the human-readable source headers; xml uses XML-safe element
+-- names (no spaces/parentheses), since those characters are illegal in XML tags.
+-- ============================================================================
 
+-- PAYMENT — xlsx / csv / json (human-readable headers)
+INSERT INTO column_mapping (file_type, field_name, source_field, required, data_type, file_extension)
+SELECT 'PAYMENT', m.field_name, m.source_field, m.required, m.data_type, ext.ext
+FROM (VALUES
+    ('month',             'Mes',                                                  true,  'INTEGER'),
+    ('day',               'dia',                                                  true,  'INTEGER'),
+    ('week',              'semana',                                               false, 'INTEGER'),
+    ('purchaseDate',      'Fecha de compra (date_created)',                       true,  'DATE'),
+    ('accreditationDate', 'Fecha de acreditación (date_approved)',                true,  'DATE'),
+    ('releaseDate',       'Fecha de liberación del dinero (date_released)',       false, 'DATE'),
+    ('clientEmail',       'E-mail de la contraparte (counterpart_email)',         true,  'STRING'),
+    ('phone',             'Teléfono de la contraparte (counterpart_phone_number)',false, 'STRING'),
+    ('documentId',        'Documento de la contraparte (buyer_document)',         false, 'STRING'),
+    ('operationId',       'Número de operación de Mercado Pago (operation_id)',   true,  'LONG'),
+    ('status',            'Estado de la operación (status)',                      true,  'STRING'),
+    ('operationType',     'Tipo de operación (operation_type)',                   true,  'STRING'),
+    ('productValue',      'Valor del producto (transaction_amount)',              true,  'DECIMAL'),
+    ('transactionFee',    'Tarifa de Mercado Pago (mercadopago_fee)',             true,  'DECIMAL'),
+    ('amountReceived',    'Monto recibido (net_received_amount)',                 true,  'DECIMAL'),
+    ('installments',      'Cuotas (installments)',                                false, 'INTEGER'),
+    ('paymentMethod',     'Medio de pago (payment_type)',                         true,  'STRING'),
+    ('packageName',       'paquete',                                              false, 'STRING'),
+    ('classCount',        'N° de clases',                                         false, 'INTEGER')
+) AS m(field_name, source_field, required, data_type)
+CROSS JOIN (VALUES ('xlsx'), ('csv'), ('json')) AS ext(ext);
 
-INSERT INTO column_mapping (file_type, field_name, source_field, required, data_type) VALUES
-('RESERVATION', 'reservationId', 'ID reserva', true, 'BIGINT'),
-('RESERVATION', 'classId', 'ID clase', true, 'BIGINT'),
-('RESERVATION', 'country', 'País', true, 'STRING'),
-('RESERVATION', 'city', 'Ciudad', true, 'STRING'),
-('RESERVATION', 'disciplineName', 'Disciplina', true, 'STRING'),
-('RESERVATION', 'studioName', 'Estudio', true, 'STRING'),
-('RESERVATION', 'roomName', 'Salon', true, 'STRING'),
-('RESERVATION', 'instructorName', 'Instructor', true, 'STRING'),
-('RESERVATION', 'day', 'Día', true, 'DATE'),
-('RESERVATION', 'time', 'Hora', true, 'TIME'),
-('RESERVATION', 'clientEmail', 'Cliente', true, 'STRING'),
-('RESERVATION', 'orderCreator', 'Creador del Pedido', true, 'STRING'),
-('RESERVATION', 'paymentMethod', 'Método de Pago', true, 'STRING'),
-('RESERVATION', 'status', 'Estatus', true, 'STRING');
+-- PAYMENT — xml (XML-safe element names)
+INSERT INTO column_mapping (file_type, field_name, source_field, required, data_type, file_extension)
+SELECT 'PAYMENT', m.field_name, m.source_field, m.required, m.data_type, 'xml'
+FROM (VALUES
+    ('month',             'mes',               true,  'INTEGER'),
+    ('day',               'dia',               true,  'INTEGER'),
+    ('week',              'semana',            false, 'INTEGER'),
+    ('purchaseDate',      'fecha_compra',      true,  'DATE'),
+    ('accreditationDate', 'fecha_acreditacion',true,  'DATE'),
+    ('releaseDate',       'fecha_liberacion',  false, 'DATE'),
+    ('clientEmail',       'email_contraparte', true,  'STRING'),
+    ('phone',             'telefono',          false, 'STRING'),
+    ('documentId',        'documento',         false, 'STRING'),
+    ('operationId',       'operation_id',      true,  'LONG'),
+    ('status',            'estado',            true,  'STRING'),
+    ('operationType',     'tipo_operacion',    true,  'STRING'),
+    ('productValue',      'valor_producto',    true,  'DECIMAL'),
+    ('transactionFee',    'tarifa',            true,  'DECIMAL'),
+    ('amountReceived',    'monto_recibido',    true,  'DECIMAL'),
+    ('installments',      'cuotas',            false, 'INTEGER'),
+    ('paymentMethod',     'medio_pago',        true,  'STRING'),
+    ('packageName',       'paquete',           false, 'STRING'),
+    ('classCount',        'numero_clases',     false, 'INTEGER')
+) AS m(field_name, source_field, required, data_type);
+
+-- RESERVATION — xlsx / csv / json (human-readable headers)
+INSERT INTO column_mapping (file_type, field_name, source_field, required, data_type, file_extension)
+SELECT 'RESERVATION', m.field_name, m.source_field, m.required, m.data_type, ext.ext
+FROM (VALUES
+    ('reservationId',  'ID reserva',         true, 'BIGINT'),
+    ('classId',        'ID clase',           true, 'BIGINT'),
+    ('country',        'País',               true, 'STRING'),
+    ('city',           'Ciudad',             true, 'STRING'),
+    ('disciplineName', 'Disciplina',         true, 'STRING'),
+    ('studioName',     'Estudio',            true, 'STRING'),
+    ('roomName',       'Salon',              true, 'STRING'),
+    ('instructorName', 'Instructor',         true, 'STRING'),
+    ('day',            'Día',                true, 'DATE'),
+    ('time',           'Hora',               true, 'TIME'),
+    ('clientEmail',    'Cliente',            true, 'STRING'),
+    ('orderCreator',   'Creador del Pedido', true, 'STRING'),
+    ('paymentMethod',  'Método de Pago',     true, 'STRING'),
+    ('status',         'Estatus',            true, 'STRING')
+) AS m(field_name, source_field, required, data_type)
+CROSS JOIN (VALUES ('xlsx'), ('csv'), ('json')) AS ext(ext);
+
+-- RESERVATION — xml (XML-safe element names)
+INSERT INTO column_mapping (file_type, field_name, source_field, required, data_type, file_extension)
+SELECT 'RESERVATION', m.field_name, m.source_field, m.required, m.data_type, 'xml'
+FROM (VALUES
+    ('reservationId',  'id_reserva',     true, 'BIGINT'),
+    ('classId',        'id_clase',       true, 'BIGINT'),
+    ('country',        'pais',           true, 'STRING'),
+    ('city',           'ciudad',         true, 'STRING'),
+    ('disciplineName', 'disciplina',     true, 'STRING'),
+    ('studioName',     'estudio',        true, 'STRING'),
+    ('roomName',       'salon',          true, 'STRING'),
+    ('instructorName', 'instructor',     true, 'STRING'),
+    ('day',            'dia',            true, 'DATE'),
+    ('time',           'hora',           true, 'TIME'),
+    ('clientEmail',    'cliente',        true, 'STRING'),
+    ('orderCreator',   'creador_pedido', true, 'STRING'),
+    ('paymentMethod',  'metodo_pago',    true, 'STRING'),
+    ('status',         'estatus',        true, 'STRING')
+) AS m(field_name, source_field, required, data_type);

@@ -96,8 +96,8 @@ public class ColumnMappingService {
 
     }
 
-    public Map<String, String> getHeaderToFieldMapping(String fileType) {
-        List<ExcelColumnMapping> mappings = columnMappingRepository.findByFileType(fileType);
+    public Map<String, String> getHeaderToFieldMapping(String fileType, String fileExtension) {
+        List<ExcelColumnMapping> mappings = columnMappingRepository.findByFileTypeAndFileExtension(fileType, fileExtension);
         Map<String, String> headerToFieldMap = new HashMap<>();
 
         for (ExcelColumnMapping mapping: mappings) {
@@ -112,14 +112,14 @@ public class ColumnMappingService {
 
         }
 
-        log.info("Loaded {} active column mappings for file type: {}", headerToFieldMap.size(), fileType);
+        log.info("Loaded {} active column mappings for file type: {} ({})", headerToFieldMap.size(), fileType, fileExtension);
         return headerToFieldMap;
     }
 
-    public Boolean validateRequiredHeaders(Set<String> excelInputHeaders, String fileType) {
+    public Boolean validateRequiredHeaders(Set<String> excelInputHeaders, String fileType, String fileExtension) {
 
         // Get required headers
-        List<ExcelColumnMapping> requiredMappings = columnMappingRepository.findByFileType(fileType).stream()
+        List<ExcelColumnMapping> requiredMappings = columnMappingRepository.findByFileTypeAndFileExtension(fileType, fileExtension).stream()
                 .filter(ExcelColumnMapping::isRequired)
                 .toList();
 

@@ -73,7 +73,7 @@ public class FileProcessingServiceImpl implements FileProcessingService {
 
             String extension = FileUtils.getExtension(fileData.getName()).toLowerCase();
             FileParser parser = fileParserFactory.forExtension(extension);
-            ParseRequest parseRequest = new ParseRequest(fileType.name(), strategy.sourceHint());
+            ParseRequest parseRequest = new ParseRequest(fileType.name(), extension);
 
             parser.parse(fileData, parseRequest, strategy.dtoClass(), MAX_ITEMS_IN_BATCH,
                     (batch) -> strategy.persist(batch, batchResults));
@@ -147,8 +147,7 @@ public class FileProcessingServiceImpl implements FileProcessingService {
                             ProcessingResult batchResult = batchPersistenceService.persistReservationsBatch(batch, cache);
                             batchResults.add(batchResult);
                             log.info("Processed batch of {} reservations. Result: {}", batch.size(), batchResult);
-                        },
-                        null
+                        }
                 ),
                 FileType.PAYMENT, new FileProcessingStrategy<>(
                         PaymentDto.class,
@@ -157,8 +156,7 @@ public class FileProcessingServiceImpl implements FileProcessingService {
                             ProcessingResult batchResult =  batchPersistenceService.persistPaymentsBatch(batch, cache);
                             batchResults.add(batchResult);
                             log.info("Processed batch of {} payments. Result: {}", batch.size(), batchResult);
-                        },
-                        "M-pago"
+                        }
                 )
         );
 

@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface ExcelColumnMappingRepository extends BaseRepository<ExcelColumnMapping, Long> {
     List<ExcelColumnMapping> findByFileType(String fileType);
+
+    List<ExcelColumnMapping> findByFileTypeAndFileExtension(String fileType, String fileExtension);
 }

@@ -24,9 +24,9 @@ import java.util.function.Consumer;
 
 /**
  * Streams an XML file and treats repeating child elements as records.
- * {@link ParseRequest#sourceHint()} specifies the repeating element name
- * (e.g. {@code "record"} or {@code "row"}). If null, the direct children of
- * the root element are used as records.
+ * The configured {@code file-parser} locator specifies the repeating element
+ * name (e.g. {@code "record"} or {@code "row"}). If null, the direct children
+ * of the root element are used as records.
  */
 @Slf4j
 @Service
@@ -34,10 +34,13 @@ public class XmlFileParser implements FileParser {
 
     private final ColumnMappingService columnMappingService;
     private final RowMapper rowMapper;
+    private final FileParserProperties fileParserProperties;
 
-    public XmlFileParser(ColumnMappingService columnMappingService, RowMapper rowMapper) {
+    public XmlFileParser(ColumnMappingService columnMappingService, RowMapper rowMapper,
+                         FileParserProperties fileParserProperties) {
         this.columnMappingService = columnMappingService;
         this.rowMapper = rowMapper;
+        this.fileParserProperties = fileParserProperties;
     }
 
     @Override
@@ -53,8 +56,8 @@ public class XmlFileParser implements FileParser {
             int batchSize,
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
-        Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType());
-        String recordElement = request.sourceHint();
+        Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType(), request.extension());
+        String recordElement = fileParserProperties.resolve(request.fileType(), request.extension());
 
         XMLInputFactory factory = XMLInputFactory.newInstance();
         // Disable external entity processing to prevent XXE
@@ -108,7 +111,7 @@ public class XmlFileParser implements FileParser {
                             if (currentRecord != null && !currentRecord.isEmpty()) {
                                 if (!headersValidated) {
                                     Set<String> xmlKeys = new HashSet<>(currentRecord.keySet());
-                                    if (!columnMappingService.validateRequiredHeaders(xmlKeys, request.fileType())) {
+                                    if (!columnMappingService.validateRequiredHeaders(xmlKeys, request.fileType(), request.extension())) {
                                         throw new IllegalArgumentException("Missing required elements in the XML file.");
                                     }
                                     headersValidated = true;

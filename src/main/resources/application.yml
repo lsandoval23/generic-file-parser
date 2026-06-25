@@ -41,3 +41,20 @@ server:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://siclodata.emetstudio.com}
+
+# Per-format record locators: file type -> file extension -> locator value.
+# The locator tells each parser where the records live: Excel = sheet name,
+# JSON = property holding the array, XML = repeating record element.
+# An empty value means "format default" (first sheet / top-level array).
+file-parser:
+  locators:
+    RESERVATION:
+      xlsx: ""
+      csv: ""
+      json: ""
+      xml: "reservation"
+    PAYMENT:
+      xlsx: "M-pago"
+      csv: ""
+      json: "M-pago"
+      xml: "M-pago"

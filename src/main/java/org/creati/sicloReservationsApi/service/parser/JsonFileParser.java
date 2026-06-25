@@ -21,8 +21,8 @@ import java.util.function.Consumer;
 
 /**
  * Streams a JSON file that contains a top-level array of objects (or an array
- * nested at the path given by {@link ParseRequest#sourceHint()} using a
- * simple dot-separated key path, e.g. {@code "data.records"}).
+ * nested at the path given by the configured {@code file-parser} locator using
+ * a simple dot-separated key path, e.g. {@code "data.records"}).
  */
 @Slf4j
 @Service
@@ -31,14 +31,17 @@ public class JsonFileParser implements FileParser {
     private final ColumnMappingService columnMappingService;
     private final RowMapper rowMapper;
     private final ObjectMapper objectMapper;
+    private final FileParserProperties fileParserProperties;
 
     public JsonFileParser(
             ColumnMappingService columnMappingService,
             RowMapper rowMapper,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            FileParserProperties fileParserProperties) {
         this.columnMappingService = columnMappingService;
         this.rowMapper = rowMapper;
         this.objectMapper = objectMapper;
+        this.fileParserProperties = fileParserProperties;
     }
 
     @Override
@@ -54,9 +57,10 @@ public class JsonFileParser implements FileParser {
             int batchSize,
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
-        Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType());
-        String[] pathSegments = request.sourceHint() != null
-                ? request.sourceHint().split("\\.")
+        Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType(), request.extension());
+        String locator = fileParserProperties.resolve(request.fileType(), request.extension());
+        String[] pathSegments = locator != null
+                ? locator.split("\\.")
                 : new String[0];
 
         try (JsonParser jp = objectMapper.createParser(file)) {
@@ -72,7 +76,7 @@ public class JsonFileParser implements FileParser {
 
                 if (!headersValidated) {
                     Set<String> jsonKeys = new HashSet<>(jsonRecord.keySet());
-                    if (!columnMappingService.validateRequiredHeaders(jsonKeys, request.fileType())) {
+                    if (!columnMappingService.validateRequiredHeaders(jsonKeys, request.fileType(), request.extension())) {
                         throw new IllegalArgumentException("Missing required keys in the JSON file.");
                     }
                     headersValidated = true;
