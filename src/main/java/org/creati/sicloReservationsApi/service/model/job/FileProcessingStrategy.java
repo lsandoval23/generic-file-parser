@@ -6,7 +6,7 @@ import java.util.function.BiConsumer;
 public record FileProcessingStrategy<T>(
         Class<T> dtoClass,
         BiConsumer<List<T>, List<ProcessingResult>> persistFunction,
-        String extraParam) {
+        String sourceHint) {
 
     public void persist(List<?> batch, List<ProcessingResult> batchResults) {
         @SuppressWarnings("unchecked")

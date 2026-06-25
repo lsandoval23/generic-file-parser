@@ -155,7 +155,9 @@ public class ReportServiceImpl implements ReportService {
         for (ReservationTableDto.ReservationTableSummary summary : summaryList) {
             switch (summary.status().toUpperCase()) {
                 case "ACEPTADA" -> totalAccepted = summary.count();
-                default -> log.warn("Unknow status: {}", summary.status());
+                case "CANCELADA" -> totalCancelled = summary.count();
+                case "PENDIENTE" -> totalPending = summary.count();
+                default -> log.warn("Unknown reservation status: {}", summary.status());
             }
         }
 

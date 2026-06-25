@@ -14,7 +14,7 @@ DROP TABLE IF EXISTS role_permissions CASCADE;
 DROP TABLE IF EXISTS roles CASCADE;
 DROP TABLE IF EXISTS permissions CASCADE;
 DROP TABLE IF EXISTS file_processing_job CASCADE;
-DROP TABLE IF EXISTS excel_column_mapping CASCADE;
+DROP TABLE IF EXISTS column_mapping CASCADE;
 
 -- ========================
 -- Client Table
@@ -136,13 +136,13 @@ CREATE TABLE file_processing_job (
 CREATE INDEX idx_file_processing_status ON file_processing_job(status);
 
 -- ========================
--- Excel Column Mapping Table
+-- Column Mapping Table
 -- ========================
-CREATE TABLE excel_column_mapping (
+CREATE TABLE column_mapping (
     mapping_id      BIGSERIAL PRIMARY KEY,
     file_type       VARCHAR(50) NOT NULL,
     field_name      VARCHAR(100) NOT NULL,
-    excel_header    VARCHAR(255) NOT NULL,
+    source_field    VARCHAR(255) NOT NULL,
     required        BOOLEAN DEFAULT FALSE,
     data_type       VARCHAR(50) DEFAULT 'STRING',
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -150,7 +150,7 @@ CREATE TABLE excel_column_mapping (
 );
 
 -- Add indexes
-CREATE INDEX idx_excel_mapping_file_type ON excel_column_mapping(file_type);
+CREATE INDEX idx_column_mapping_file_type ON column_mapping(file_type);
 
 -- ========================
 -- User Table
@@ -385,7 +385,7 @@ WHERE u.username = 'admin' AND r.name = 'ADMIN';
 
 
 -- Add initial mappings for payment transactions
-INSERT INTO excel_column_mapping (file_type, field_name, excel_header, required, data_type) VALUES
+INSERT INTO column_mapping (file_type, field_name, source_field, required, data_type) VALUES
 ('PAYMENT', 'month', 'Mes', true, 'INTEGER'),
 ('PAYMENT', 'day', 'dia', true, 'INTEGER'),
 ('PAYMENT', 'week', 'semana', false, 'INTEGER'),
@@ -407,7 +407,7 @@ INSERT INTO excel_column_mapping (file_type, field_name, excel_header, required,
 ('PAYMENT', 'classCount', 'N° de clases', false, 'INTEGER');
 
 
-INSERT INTO excel_column_mapping (file_type, field_name, excel_header, required, data_type) VALUES
+INSERT INTO column_mapping (file_type, field_name, source_field, required, data_type) VALUES
 ('RESERVATION', 'reservationId', 'ID reserva', true, 'BIGINT'),
 ('RESERVATION', 'classId', 'ID clase', true, 'BIGINT'),
 ('RESERVATION', 'country', 'País', true, 'STRING'),

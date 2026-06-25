@@ -18,6 +18,13 @@ import java.util.List;
 @ConditionalOnProperty(name = "auth.jwt.enabled", havingValue = "false")
 public class NoSecurityConfiguration {
 
+    private final List<String> allowedOrigins;
+
+    public NoSecurityConfiguration(
+            @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins}") String allowedOriginsRaw) {
+        this.allowedOrigins = List.of(allowedOriginsRaw.split(","));
+    }
+
     @Bean
     public SecurityFilterChain noSecurityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -35,7 +42,7 @@ public class NoSecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("*"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

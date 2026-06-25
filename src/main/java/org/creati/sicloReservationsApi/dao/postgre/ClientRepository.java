@@ -14,9 +14,12 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public interface ClientRepository extends BaseRepository<Client, Long> {
+
+    List<Client> findByEmailIn(Set<String> emails);
 
     // clientFilter can be null, email or name partial match
     @Query(value = """

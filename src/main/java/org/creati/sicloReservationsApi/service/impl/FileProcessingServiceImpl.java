@@ -1,4 +1,4 @@
-package org.creati.sicloReservationsApi.service.excel;
+package org.creati.sicloReservationsApi.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -6,15 +6,19 @@ import org.creati.sicloReservationsApi.cache.EntityCacheService;
 import org.creati.sicloReservationsApi.cache.model.EntityCache;
 import org.creati.sicloReservationsApi.dao.postgre.model.FileJob;
 import org.creati.sicloReservationsApi.exception.FileProcessingException;
+import org.creati.sicloReservationsApi.service.BatchPersistenceService;
 import org.creati.sicloReservationsApi.service.FileJobService;
 import org.creati.sicloReservationsApi.service.FileProcessingService;
+import org.creati.sicloReservationsApi.service.model.PaymentDto;
+import org.creati.sicloReservationsApi.service.model.ReservationDto;
 import org.creati.sicloReservationsApi.service.model.job.FileJobUpdateRequest;
 import org.creati.sicloReservationsApi.service.model.job.FileProcessingStrategy;
 import org.creati.sicloReservationsApi.service.model.job.FileType;
-import org.creati.sicloReservationsApi.service.model.PaymentDto;
 import org.creati.sicloReservationsApi.service.model.job.ProcessingResult;
-import org.creati.sicloReservationsApi.service.BatchPersistenceService;
-import org.creati.sicloReservationsApi.service.model.ReservationDto;
+import org.creati.sicloReservationsApi.service.parser.FileParser;
+import org.creati.sicloReservationsApi.service.parser.FileParserFactory;
+import org.creati.sicloReservationsApi.service.model.parser.ParseRequest;
+import org.creati.sicloReservationsApi.service.util.FileUtils;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,37 +26,34 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
 @Service
-public class ExcelProcessingService implements FileProcessingService {
+public class FileProcessingServiceImpl implements FileProcessingService {
 
-    public static Integer MAX_ITEMS_IN_BATCH = 1000;
+    public static final int MAX_ITEMS_IN_BATCH = 1000;
 
-    private final StreamingExcelParser streamingParser;
+    private final FileParserFactory fileParserFactory;
     private final EntityCacheService entityCacheService;
     private final BatchPersistenceService batchPersistenceService;
     private final FileJobService fileJobService;
     private final ObjectMapper objectMapper;
 
-
-    public ExcelProcessingService(
-            final StreamingExcelParser streamingParser,
+    public FileProcessingServiceImpl(
+            final FileParserFactory fileParserFactory,
             final EntityCacheService entityCacheService,
             final BatchPersistenceService batchPersistenceService,
             final FileJobService fileJobService,
             final ObjectMapper objectMapper) {
-        this.streamingParser = streamingParser;
+        this.fileParserFactory = fileParserFactory;
         this.entityCacheService = entityCacheService;
         this.batchPersistenceService = batchPersistenceService;
         this.fileJobService = fileJobService;
         this.objectMapper = objectMapper;
     }
-
 
     @Override
     @Async
@@ -70,13 +71,12 @@ public class ExcelProcessingService implements FileProcessingService {
             List<ProcessingResult> batchResults = new ArrayList<>();
             FileProcessingStrategy<?> strategy = getFileProcessingStrategy(fileType);
 
-            streamingParser.parseFromFile(
-                    fileData,
-                    fileType.name(),
-                    strategy.dtoClass(),
-                    MAX_ITEMS_IN_BATCH,
-                    (batch) -> strategy.persist(batch, batchResults),
-                    strategy.extraParam());
+            String extension = FileUtils.getExtension(fileData.getName()).toLowerCase();
+            FileParser parser = fileParserFactory.forExtension(extension);
+            ParseRequest parseRequest = new ParseRequest(fileType.name(), strategy.sourceHint());
+
+            parser.parse(fileData, parseRequest, strategy.dtoClass(), MAX_ITEMS_IN_BATCH,
+                    (batch) -> strategy.persist(batch, batchResults));
 
             ProcessingResult batchProcessingResult = ProcessingResult.builder()
                     .success(batchResults.stream().allMatch(ProcessingResult::isSuccess))
@@ -119,7 +119,7 @@ public class ExcelProcessingService implements FileProcessingService {
                     .errorMessage(errorMsg)
                     .status(FileJob.JobStatus.FAILED)
                     .build(), jobFound);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             String errorMsg = String.format("Unexpected error processing file %s of type %s: %s", fileData.getName(), fileType, e.getMessage());
             log.error(errorMsg, e);
             fileJobService.updateStatus(jobId, FileJobUpdateRequest.builder()
@@ -135,7 +135,6 @@ public class ExcelProcessingService implements FileProcessingService {
                 }
             }
         }
-
     }
 
     private FileProcessingStrategy<?> getFileProcessingStrategy(FileType fileType) {

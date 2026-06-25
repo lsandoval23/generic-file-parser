@@ -18,7 +18,7 @@ import java.time.ZoneId;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@Table(name = "excel_column_mapping")
+@Table(name = "column_mapping")
 public class ExcelColumnMapping {
 
     @Id
@@ -32,7 +32,7 @@ public class ExcelColumnMapping {
     @Column(nullable = false)
     private String fieldName;
 
-    @Column(nullable = false)
+    @Column(name = "source_field", nullable = false)
     private String excelHeader;
 
     private boolean required;
@@ -53,6 +53,4 @@ public class ExcelColumnMapping {
                 .createdAt(LocalDateTime.ofInstant(this.getCreatedAt(), ZoneId.of("America/Lima")))
                 .build();
     }
-
-
 }

@@ -32,14 +32,17 @@ public class SecurityConfiguration {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
+    private final List<String> allowedOrigins;
 
     public SecurityConfiguration(
             final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
             final JwtAuthenticationFilter jwtAuthenticationFilter,
-            final CustomUserDetailsService userDetailsService) {
+            final CustomUserDetailsService userDetailsService,
+            @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins}") String allowedOriginsRaw) {
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userDetailsService = userDetailsService;
+        this.allowedOrigins = List.of(allowedOriginsRaw.split(","));
     }
 
     @Bean
@@ -66,7 +69,7 @@ public class SecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://siclodata.emetstudio.com"));
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("*"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
