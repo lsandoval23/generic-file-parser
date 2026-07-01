@@ -1,6 +1,6 @@
 spring:
   application:
-    name: siclo-reservations-api
+    name: file-parser-api
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
@@ -23,7 +23,7 @@ spring:
 logging:
   level:
     root: INFO
-    org.creati.sicloReservationsApi: INFO
+    org.lsandoval.fileparser: INFO
 
 jwt:
   secret: ${JWT_SECRET}
@@ -36,11 +36,11 @@ auth:
 server:
   port: 8080
   servlet:
-    context-path: /siclo/api
+    context-path: /file-parser/api
 
 app:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://siclodata.emetstudio.com}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
 # Per-format record locators: file type -> file extension -> locator value.
 # The locator tells each parser where the records live: Excel = sheet name,

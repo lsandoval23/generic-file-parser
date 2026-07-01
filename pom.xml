@@ -8,11 +8,11 @@
 		<version>3.5.5</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>org.creati</groupId>
-	<artifactId>siclo-reservations-api</artifactId>
+	<groupId>org.lsandoval</groupId>
+	<artifactId>file-parser-api</artifactId>
 	<version>0.0.1</version>
-	<name>siclo-reservations-api</name>
-	<description>Excel parser and statistics API</description>
+	<name>file-parser-api</name>
+	<description>Generic multi-format file parser and ingestion API</description>
 	<url/>
 	<licenses>
 		<license/>
