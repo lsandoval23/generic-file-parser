@@ -1,5 +1,6 @@
 package org.creati.sicloReservationsApi.cache;
 
+import lombok.extern.slf4j.Slf4j;
 import org.creati.sicloReservationsApi.cache.model.EntityCache;
 import org.creati.sicloReservationsApi.dao.postgre.ClientRepository;
 import org.creati.sicloReservationsApi.dao.postgre.DisciplineRepository;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class InMemoryCacheServiceImpl implements EntityCacheService {
 
@@ -48,94 +50,68 @@ public class InMemoryCacheServiceImpl implements EntityCacheService {
 
     @Override
     public EntityCache preloadEntitiesForReservation(List<ReservationDto> reservations) {
-
         EntityCache entityCache = new EntityCache();
 
-        // Preload clients by email
         Set<String> clientEmails = reservations.stream()
                 .map(ReservationDto::getClientEmail)
                 .collect(Collectors.toSet());
+        clientRepository.findByEmailIn(clientEmails)
+                .forEach(c -> entityCache.getClientsByEmail().put(c.getEmail(), c));
 
-        clientRepository.findAll().forEach(client -> {
-            if (clientEmails.contains(client.getEmail())) {
-                entityCache.getClientsByEmail().put(client.getEmail(), client);
-            }
-        });
-
-        // Preload studios
         Set<String> studioNames = reservations.stream()
                 .map(ReservationDto::getStudioName)
                 .collect(Collectors.toSet());
+        studioRepository.findByNameIn(studioNames)
+                .forEach(s -> entityCache.getStudiosByName().put(s.getName(), s));
 
-        studioRepository.findAll().forEach(studio -> {
-            if (studioNames.contains(studio.getName())) {
-                entityCache.getStudiosByName().put(studio.getName(), studio);
-            }
-        });
-
-        // Preload disciplines
         Set<String> disciplineNames = reservations.stream()
                 .map(ReservationDto::getDisciplineName)
                 .collect(Collectors.toSet());
-        disciplineRepository.findAll().forEach(discipline -> {
-            if (disciplineNames.contains(discipline.getName())) {
-                entityCache.getDisciplinesByName().put(discipline.getName(), discipline);
-            }
-        });
+        disciplineRepository.findByNameIn(disciplineNames)
+                .forEach(d -> entityCache.getDisciplinesByName().put(d.getName(), d));
 
-        // Preload instructors
         Set<String> instructorNames = reservations.stream()
                 .map(ReservationDto::getInstructorName)
                 .collect(Collectors.toSet());
-        instructorRepository.findAll().forEach(instructor -> {
-            if (instructorNames.contains(instructor.getName())) {
-                entityCache.getInstructorsByName().put(instructor.getName(), instructor);
-            }
-        });
+        instructorRepository.findByNameIn(instructorNames)
+                .forEach(i -> entityCache.getInstructorsByName().put(i.getName(), i));
 
-        // Preload rooms
-        roomRepository.findAll().forEach(room -> {
+        // Rooms — fetch only those belonging to the referenced studios, with studio eagerly loaded
+        roomRepository.findByStudioNamesWithStudio(studioNames).forEach(room -> {
+            if (room.getStudio() == null) {
+                log.warn("Room {} has no associated studio; skipping cache entry", room.getRoomId());
+                return;
+            }
             String key = room.getStudio().getName() + "|" + room.getName();
             entityCache.getRoomsByStudioAndName().put(key, room);
         });
 
-        // Preload existing reservations by reservationId
         Set<Long> reservationIds = reservations.stream()
                 .map(ReservationDto::getReservationId)
                 .collect(Collectors.toSet());
-        entityCache.getExistingReservationIds().addAll(reservationRepository.findAllById(reservationIds)
-                .stream()
+        reservationRepository.findAllById(reservationIds).stream()
                 .map(Reservation::getReservationId)
-                .collect(Collectors.toSet()));
+                .forEach(entityCache.getExistingReservationIds()::add);
 
         return entityCache;
     }
 
     @Override
     public EntityCache preloadEntitiesForPayments(List<PaymentDto> payments) {
-
         EntityCache entityCache = new EntityCache();
 
-        // Preload payment operation IDs
         Set<Long> operationIds = payments.stream()
                 .map(PaymentDto::getOperationId)
                 .collect(Collectors.toSet());
-        entityCache.getExistingOperationIds().addAll(paymentRepository.findAllById(operationIds)
-                .stream()
+        paymentRepository.findAllById(operationIds).stream()
                 .map(PaymentTransaction::getOperationId)
-                .collect(Collectors.toSet()));
+                .forEach(entityCache.getExistingOperationIds()::add);
 
-
-        // Preload clients by email
         Set<String> clientEmails = payments.stream()
                 .map(PaymentDto::getClientEmail)
                 .collect(Collectors.toSet());
-
-        clientRepository.findAll().forEach(client -> {
-            if (clientEmails.contains(client.getEmail())) {
-                entityCache.getClientsByEmail().put(client.getEmail(), client);
-            }
-        });
+        clientRepository.findByEmailIn(clientEmails)
+                .forEach(c -> entityCache.getClientsByEmail().put(c.getEmail(), c));
 
         return entityCache;
     }

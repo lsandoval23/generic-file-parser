@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<payments>
+  <M-pago>
+    <mes>6</mes>
+    <dia>12</dia>
+    <semana>24</semana>
+    <fecha_compra>12/06/2025 09:15:00</fecha_compra>
+    <fecha_acreditacion>12/06/2025 09:16:00</fecha_acreditacion>
+    <fecha_liberacion>26/06/2025 09:16:00</fecha_liberacion>
+    <email_contraparte>maria.gomez@example.com</email_contraparte>
+    <telefono>999111222</telefono>
+    <documento>12345678</documento>
+    <operation_id>700001</operation_id>
+    <estado>approved</estado>
+    <tipo_operacion>payment</tipo_operacion>
+    <valor_producto>120.00</valor_producto>
+    <tarifa>4.20</tarifa>
+    <monto_recibido>115.80</monto_recibido>
+    <cuotas>1</cuotas>
+    <medio_pago>credit_card</medio_pago>
+    <paquete>Pack 4</paquete>
+    <numero_clases>4</numero_clases>
+  </M-pago>
+  <M-pago>
+    <mes>6</mes>
+    <dia>12</dia>
+    <semana>24</semana>
+    <fecha_compra>12/06/2025 10:00:00</fecha_compra>
+    <fecha_acreditacion>12/06/2025 10:01:00</fecha_acreditacion>
+    <fecha_liberacion>26/06/2025 10:01:00</fecha_liberacion>
+    <email_contraparte>juan.perez@example.com</email_contraparte>
+    <telefono>999333444</telefono>
+    <documento>23456789</documento>
+    <operation_id>700002</operation_id>
+    <estado>approved</estado>
+    <tipo_operacion>payment</tipo_operacion>
+    <valor_producto>50.00</valor_producto>
+    <tarifa>1.75</tarifa>
+    <monto_recibido>48.25</monto_recibido>
+    <cuotas>1</cuotas>
+    <medio_pago>account_money</medio_pago>
+    <paquete>Pack 1</paquete>
+    <numero_clases>1</numero_clases>
+  </M-pago>
+  <M-pago>
+    <mes>6</mes>
+    <dia>13</dia>
+    <semana>24</semana>
+    <fecha_compra>13/06/2025 17:45:00</fecha_compra>
+    <fecha_acreditacion>13/06/2025 17:46:00</fecha_acreditacion>
+    <fecha_liberacion>27/06/2025 17:46:00</fecha_liberacion>
+    <email_contraparte>carla.diaz@example.com</email_contraparte>
+    <telefono>999555666</telefono>
+    <documento>34567890</documento>
+    <operation_id>700003</operation_id>
+    <estado>refunded</estado>
+    <tipo_operacion>payment</tipo_operacion>
+    <valor_producto>200.00</valor_producto>
+    <tarifa>7.00</tarifa>
+    <monto_recibido>193.00</monto_recibido>
+    <cuotas>3</cuotas>
+    <medio_pago>credit_card</medio_pago>
+    <paquete>Pack 8</paquete>
+    <numero_clases>8</numero_clases>
+  </M-pago>
+  <M-pago>
+    <mes>6</mes>
+    <dia>14</dia>
+    <semana>24</semana>
+    <fecha_compra>14/06/2025 20:30:00</fecha_compra>
+    <fecha_acreditacion>14/06/2025 20:31:00</fecha_acreditacion>
+    <fecha_liberacion>28/06/2025 20:31:00</fecha_liberacion>
+    <email_contraparte>pedro.ruiz@example.com</email_contraparte>
+    <telefono>5215512345</telefono>
+    <documento>MX998877</documento>
+    <operation_id>700004</operation_id>
+    <estado>approved</estado>
+    <tipo_operacion>payment</tipo_operacion>
+    <valor_producto>150.00</valor_producto>
+    <tarifa>5.25</tarifa>
+    <monto_recibido>144.75</monto_recibido>
+    <cuotas>1</cuotas>
+    <medio_pago>debit_card</medio_pago>
+    <paquete>Pack 4</paquete>
+    <numero_clases>4</numero_clases>
+  </M-pago>
+  <M-pago>
+    <mes>6</mes>
+    <dia>14</dia>
+    <semana>24</semana>
+    <fecha_compra>14/06/2025 21:00:00</fecha_compra>
+    <fecha_acreditacion>14/06/2025 21:01:00</fecha_acreditacion>
+    <fecha_liberacion>28/06/2025 21:01:00</fecha_liberacion>
+    <email_contraparte>sofia.vega@example.com</email_contraparte>
+    <telefono>5215567890</telefono>
+    <documento>MX112233</documento>
+    <operation_id>700005</operation_id>
+    <estado>approved</estado>
+    <tipo_operacion>payment</tipo_operacion>
+    <valor_producto>150.00</valor_producto>
+    <tarifa>5.25</tarifa>
+    <monto_recibido>144.75</monto_recibido>
+    <cuotas>6</cuotas>
+    <medio_pago>credit_card</medio_pago>
+    <paquete>Pack 4</paquete>
+    <numero_clases>4</numero_clases>
+  </M-pago>
+</payments>

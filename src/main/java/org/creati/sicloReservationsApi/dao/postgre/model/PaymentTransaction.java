@@ -12,7 +12,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.creati.sicloReservationsApi.service.model.reports.PaymentTableDto;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -85,30 +84,6 @@ public class PaymentTransaction {
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
-    }
-
-    public PaymentTableDto toDto() {
-        return new PaymentTableDto(
-                this.getOperationId(),
-                this.getMonth(),
-                this.getDay(),
-                this.getWeek(),
-                this.getPurchaseDate(),
-                this.getAccreditationDate(),
-                this.getReleaseDate(),
-                this.getOperationType(),
-                this.getProductValue(),
-                this.getTransactionFee(),
-                this.getAmountReceived(),
-                this.getInstallments(),
-                this.getPaymentMethod(),
-                this.getPackageName(),
-                this.getClassCount(),
-                new PaymentTableDto.ClientInfo(
-                        this.getClient().getName(),
-                        this.getClient().getEmail(),
-                        this.getClient().getPhone())
-        );
     }
 
 }
