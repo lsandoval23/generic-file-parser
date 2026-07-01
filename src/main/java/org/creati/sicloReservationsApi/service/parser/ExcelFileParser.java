@@ -9,7 +9,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.creati.sicloReservationsApi.exception.FileProcessingException;
-import org.creati.sicloReservationsApi.service.impl.ColumnMappingService;
+import org.creati.sicloReservationsApi.service.ColumnMappingService;
 import org.creati.sicloReservationsApi.service.model.parser.ParseRequest;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +17,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -29,16 +28,13 @@ import java.util.function.Consumer;
 
 @Slf4j
 @Service
-public class ExcelFileParser implements FileParser {
+public class ExcelFileParser extends AbstractFileParser {
 
-    private final ColumnMappingService columnMappingService;
-    private final RowMapper rowMapper;
     private final FileParserProperties fileParserProperties;
 
     public ExcelFileParser(ColumnMappingService columnMappingService, RowMapper rowMapper,
                            FileParserProperties fileParserProperties) {
-        this.columnMappingService = columnMappingService;
-        this.rowMapper = rowMapper;
+        super(columnMappingService, rowMapper);
         this.fileParserProperties = fileParserProperties;
     }
 
@@ -56,7 +52,7 @@ public class ExcelFileParser implements FileParser {
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
         try (Workbook workbook = createStreamingWorkbook(file)) {
-            Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType(), request.extension());
+            Map<String, String> headerToFieldMap = headerToFieldMapping(request);
 
             String sheetName = fileParserProperties.resolve(request.fileType(), request.extension());
             Sheet sheet = Optional.ofNullable(sheetName)
@@ -72,9 +68,7 @@ public class ExcelFileParser implements FileParser {
             Set<String> excelHeaders = new HashSet<>();
             headerRow.forEach(cell -> excelHeaders.add(getCellStringValue(cell)));
 
-            if (!columnMappingService.validateRequiredHeaders(excelHeaders, request.fileType(), request.extension())) {
-                throw new IllegalArgumentException("Missing required headers in the Excel file.");
-            }
+            validateRequiredHeaders(excelHeaders, request);
 
             Map<Integer, String> columnIndexToField = new HashMap<>();
             for (Cell cell : headerRow) {
@@ -88,22 +82,15 @@ public class ExcelFileParser implements FileParser {
                 }
             }
 
-            List<T> batch = new ArrayList<>();
+            BatchAccumulator<T> batch = batchAccumulator(batchSize, batchProcessor);
             while (rowIterator.hasNext()) {
                 Row row = rowIterator.next();
                 if (row == null || isEmptyRow(row)) continue;
 
                 Map<String, Object> rawRow = extractRow(row, columnIndexToField);
                 batch.add(rowMapper.map(rawRow, dtoClass));
-
-                if (batch.size() >= batchSize) {
-                    batchProcessor.accept(batch);
-                    batch.clear();
-                }
             }
-            if (!batch.isEmpty()) {
-                batchProcessor.accept(batch);
-            }
+            batch.flush();
         }
     }
 

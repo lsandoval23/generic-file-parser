@@ -16,14 +16,19 @@ import org.creati.sicloReservationsApi.dao.postgre.model.PaymentTransaction;
 import org.creati.sicloReservationsApi.dao.postgre.model.Reservation;
 import org.creati.sicloReservationsApi.dao.postgre.model.Room;
 import org.creati.sicloReservationsApi.dao.postgre.model.Studio;
-import org.creati.sicloReservationsApi.service.model.PaymentDto;
-import org.creati.sicloReservationsApi.service.model.job.ProcessingResult;
-import org.creati.sicloReservationsApi.service.model.ReservationDto;
 import org.creati.sicloReservationsApi.service.BatchPersistenceService;
+import org.creati.sicloReservationsApi.service.model.PaymentDto;
+import org.creati.sicloReservationsApi.service.model.ReservationDto;
+import org.creati.sicloReservationsApi.service.model.job.ProcessingResult;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 
 @Slf4j
 @Service
@@ -56,147 +61,125 @@ public class BatchPersistenceServiceImpl implements BatchPersistenceService {
 
 
     @Override
+    @Transactional
     public ProcessingResult persistReservationsBatch(List<ReservationDto> reservationDtoList, EntityCache cache) {
-
-        List<String> errors = new ArrayList<>();
-        List<Reservation> reservationsToSave = new ArrayList<>();
-
-        int processedRows = 0;
-        int errorRows = 0;
-        int skippedRows = 0;
-
-        for (int i = 0; i < reservationDtoList.size(); i++) {
-            ReservationDto reservation = reservationDtoList.get(i);
-            try {
-                if (cache.getExistingReservationIds().contains(reservation.getReservationId())) {
-                    log.warn("Skipping existing reservation ID: {}", reservation.getReservationId());
-                    skippedRows++;
-                    continue;
-                }
-                Reservation reservationEntity = buildReservationEntity(reservation, cache);
-                reservationsToSave.add(reservationEntity);
-                processedRows++;
-            } catch (Exception e) {
-                errorRows++;
-                errors.add(String.format("Error processing row %d: %s", i + 1, e.getMessage()));
-                log.error("Error processing reservation at row {}: exception: {}", i + 1, e.getMessage());
-            }
-        }
-
-        if (!reservationsToSave.isEmpty()) {
-            reservationRepository.saveAll(reservationsToSave);
-            log.info("Saved {} new reservations", reservationsToSave.size());
-        }
-
-        return ProcessingResult.builder()
-                .success(errorRows == 0)
-                .totalProcessed(reservationDtoList.size())
-                .successCount(processedRows)
-                .failureCount(errorRows)
-                .skipped(skippedRows)
-                .errors(errors)
-                .build();
-
+        return persistBatch(
+                reservationDtoList,
+                ReservationDto::getReservationId,
+                cache.getExistingReservationIds(),
+                dto -> buildReservationEntity(dto, cache),
+                reservationRepository);
     }
 
     @Override
+    @Transactional
     public ProcessingResult persistPaymentsBatch(List<PaymentDto> paymentDtoList, EntityCache cache) {
+        return persistBatch(
+                paymentDtoList,
+                PaymentDto::getOperationId,
+                cache.getExistingOperationIds(),
+                dto -> buildPaymentEntity(dto, cache),
+                paymentRepository);
+    }
+
+    /**
+     * Shared batch loop: skips rows whose id is already present, builds an
+     * entity for each new row (collecting per-row errors), then persists the
+     * surviving entities in one {@code saveAll}.
+     */
+    private <D, E> ProcessingResult persistBatch(
+            List<D> dtoList,
+            Function<D, Long> idExtractor,
+            Set<Long> existingIds,
+            Function<D, E> entityBuilder,
+            JpaRepository<E, Long> repository) {
 
         List<String> errors = new ArrayList<>();
-        List<PaymentTransaction> paymentsToSave = new ArrayList<>();
-
+        List<E> toSave = new ArrayList<>();
         int processedRows = 0;
         int errorRows = 0;
         int skippedRows = 0;
 
-        for (int i = 0; i < paymentDtoList.size(); i++) {
-            PaymentDto payment = paymentDtoList.get(i);
+        for (int i = 0; i < dtoList.size(); i++) {
+            D dto = dtoList.get(i);
             try {
-                if (cache.getExistingOperationIds().contains(payment.getOperationId())) {
-                    log.debug("Skipping existing operation ID: {}", payment.getOperationId());
+                if (existingIds.contains(idExtractor.apply(dto))) {
+                    log.debug("Skipping existing id: {}", idExtractor.apply(dto));
                     skippedRows++;
                     continue;
                 }
-
-                PaymentTransaction paymentEntity = buildPaymentEntity(payment, cache);
-                paymentsToSave.add(paymentEntity);
+                toSave.add(entityBuilder.apply(dto));
                 processedRows++;
             } catch (Exception e) {
                 errorRows++;
                 errors.add(String.format("Error processing row %d: %s", i + 1, e.getMessage()));
-                log.error("Error processing payment at row {}: exception: {}", i + 1, e.getMessage());
+                log.error("Error processing row {}: exception: {}", i + 1, e.getMessage());
             }
         }
 
-        if (!paymentsToSave.isEmpty()) {
-            paymentRepository.saveAll(paymentsToSave);
-            log.info("Saved {} new payments", paymentsToSave.size());
+        if (!toSave.isEmpty()) {
+            repository.saveAll(toSave);
+            log.info("Saved {} new records", toSave.size());
         }
 
         return ProcessingResult.builder()
                 .success(errorRows == 0)
-                .totalProcessed(paymentDtoList.size())
+                .totalProcessed(dtoList.size())
                 .successCount(processedRows)
                 .failureCount(errorRows)
                 .skipped(skippedRows)
                 .errors(errors)
                 .build();
+    }
 
+    /**
+     * Returns the cached entity for {@code key}, or builds, persists and caches
+     * a new one when absent.
+     */
+    private <K, V> V getOrCreate(Map<K, V> cache, K key, Function<K, V> builder, JpaRepository<V, Long> repository) {
+        return cache.computeIfAbsent(key, k -> {
+            log.debug("Creating new entity for key: {}", k);
+            return repository.save(builder.apply(k));
+        });
     }
 
 
     private Reservation buildReservationEntity(ReservationDto dto, EntityCache cache) {
-        Client newClient = cache.getClientsByEmail().computeIfAbsent(dto.getClientEmail(), email -> {
-            log.debug("Creating new client for email: {}", email);
-            Client client = Client.builder()
-                    .email(email)
-                    .build();
-            return clientRepository.save(client);
-        });
+        Client client = getOrCreate(cache.getClientsByEmail(), dto.getClientEmail(),
+                email -> Client.builder().email(email).build(),
+                clientRepository);
 
-        Studio newStudio = cache.getStudiosByName().computeIfAbsent(dto.getStudioName(), name -> {
-            log.debug("Creating new studio for name: {}", name);
-            Studio studio = Studio.builder()
-                    .name(name)
-                    .country(dto.getCountry())
-                    .city(dto.getCity())
-                    .build();
-            return studioRepository.save(studio);
-        });
+        Studio studio = getOrCreate(cache.getStudiosByName(), dto.getStudioName(),
+                name -> Studio.builder()
+                        .name(name)
+                        .country(dto.getCountry())
+                        .city(dto.getCity())
+                        .build(),
+                studioRepository);
 
-        String roomKey = newStudio.getName() + "|" + dto.getRoomName();
-        Room newRoom = cache.getRoomsByStudioAndName().computeIfAbsent(roomKey, key -> {
-            log.debug("Creating new room: {} for studio: {}", dto.getRoomName(), newStudio.getStudioId());
-            Room room = Room.builder()
-                    .name(dto.getRoomName())
-                    .studio(newStudio)
-                    .build();
-            return roomRepository.save(room);
-        });
+        String roomKey = studio.getName() + "|" + dto.getRoomName();
+        Room room = getOrCreate(cache.getRoomsByStudioAndName(), roomKey,
+                key -> Room.builder()
+                        .name(dto.getRoomName())
+                        .studio(studio)
+                        .build(),
+                roomRepository);
 
-        Discipline newDiscipline = cache.getDisciplinesByName().computeIfAbsent(dto.getDisciplineName(), name -> {
-            log.debug("Creating new discipline for name: {}", name);
-            Discipline discipline = Discipline.builder()
-                    .name(name)
-                    .build();
-            return disciplineRepository.save(discipline);
-        });
+        Discipline discipline = getOrCreate(cache.getDisciplinesByName(), dto.getDisciplineName(),
+                name -> Discipline.builder().name(name).build(),
+                disciplineRepository);
 
-        Instructor newInstructor = cache.getInstructorsByName().computeIfAbsent(dto.getInstructorName(), name -> {
-            log.debug("Creating new instructor for name: {}", name);
-            Instructor instructor = Instructor.builder()
-                    .name(name)
-                    .build();
-            return instructorRepository.save(instructor);
-        });
+        Instructor instructor = getOrCreate(cache.getInstructorsByName(), dto.getInstructorName(),
+                name -> Instructor.builder().name(name).build(),
+                instructorRepository);
 
         return Reservation.builder()
                 .reservationId(dto.getReservationId())
                 .classId(dto.getClassId())
-                .room(newRoom)
-                .discipline(newDiscipline)
-                .instructor(newInstructor)
-                .client(newClient)
+                .room(room)
+                .discipline(discipline)
+                .instructor(instructor)
+                .client(client)
                 .reservationDate(dto.getDay())
                 .reservationTime(dto.getTime())
                 .orderCreator(dto.getOrderCreator())
@@ -207,16 +190,13 @@ public class BatchPersistenceServiceImpl implements BatchPersistenceService {
 
 
     private PaymentTransaction buildPaymentEntity(PaymentDto dto, EntityCache cache) {
-
-        Client newClient = cache.getClientsByEmail().computeIfAbsent(dto.getClientEmail(), email -> {
-            log.debug("Creating new client for email: {}", email);
-            Client client = Client.builder()
-                    .phone(dto.getPhone())
-                    .documentId(dto.getDocumentId())
-                    .email(email)
-                    .build();
-            return clientRepository.save(client);
-        });
+        Client client = getOrCreate(cache.getClientsByEmail(), dto.getClientEmail(),
+                email -> Client.builder()
+                        .phone(dto.getPhone())
+                        .documentId(dto.getDocumentId())
+                        .email(email)
+                        .build(),
+                clientRepository);
 
         return PaymentTransaction.builder()
                 .operationId(dto.getOperationId())
@@ -235,7 +215,7 @@ public class BatchPersistenceServiceImpl implements BatchPersistenceService {
                 .paymentMethod(dto.getPaymentMethod())
                 .packageName(dto.getPackageName())
                 .classCount(dto.getClassCount())
-                .client(newClient)
+                .client(client)
                 .build();
     }
 

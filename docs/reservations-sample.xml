@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<reservations>
+  <reservation>
+    <id_reserva>1001</id_reserva>
+    <id_clase>5001</id_clase>
+    <pais>Perú</pais>
+    <ciudad>Lima</ciudad>
+    <disciplina>Cycling</disciplina>
+    <estudio>Siclo Asia</estudio>
+    <salon>Sala A</salon>
+    <instructor>Ana Torres</instructor>
+    <dia>12/06/2025</dia>
+    <hora>07:00</hora>
+    <cliente>maria.gomez@example.com</cliente>
+    <creador_pedido>Web</creador_pedido>
+    <metodo_pago>Tarjeta</metodo_pago>
+    <estatus>Confirmada</estatus>
+  </reservation>
+  <reservation>
+    <id_reserva>1002</id_reserva>
+    <id_clase>5001</id_clase>
+    <pais>Perú</pais>
+    <ciudad>Lima</ciudad>
+    <disciplina>Cycling</disciplina>
+    <estudio>Siclo Asia</estudio>
+    <salon>Sala A</salon>
+    <instructor>Ana Torres</instructor>
+    <dia>12/06/2025</dia>
+    <hora>07:00</hora>
+    <cliente>juan.perez@example.com</cliente>
+    <creador_pedido>App</creador_pedido>
+    <metodo_pago>Efectivo</metodo_pago>
+    <estatus>Confirmada</estatus>
+  </reservation>
+  <reservation>
+    <id_reserva>1003</id_reserva>
+    <id_clase>5002</id_clase>
+    <pais>Perú</pais>
+    <ciudad>Lima</ciudad>
+    <disciplina>Barre</disciplina>
+    <estudio>Siclo Miraflores</estudio>
+    <salon>Sala B</salon>
+    <instructor>Lucía Ramos</instructor>
+    <dia>13/06/2025</dia>
+    <hora>18:30</hora>
+    <cliente>carla.diaz@example.com</cliente>
+    <creador_pedido>Web</creador_pedido>
+    <metodo_pago>Tarjeta</metodo_pago>
+    <estatus>Cancelada</estatus>
+  </reservation>
+  <reservation>
+    <id_reserva>1004</id_reserva>
+    <id_clase>5003</id_clase>
+    <pais>México</pais>
+    <ciudad>CDMX</ciudad>
+    <disciplina>Cycling</disciplina>
+    <estudio>Siclo Polanco</estudio>
+    <salon>Sala C</salon>
+    <instructor>Diego Luna</instructor>
+    <dia>14/06/2025</dia>
+    <hora>19:00</hora>
+    <cliente>pedro.ruiz@example.com</cliente>
+    <creador_pedido>App</creador_pedido>
+    <metodo_pago>Tarjeta</metodo_pago>
+    <estatus>Confirmada</estatus>
+  </reservation>
+  <reservation>
+    <id_reserva>1005</id_reserva>
+    <id_clase>5003</id_clase>
+    <pais>México</pais>
+    <ciudad>CDMX</ciudad>
+    <disciplina>Cycling</disciplina>
+    <estudio>Siclo Polanco</estudio>
+    <salon>Sala C</salon>
+    <instructor>Diego Luna</instructor>
+    <dia>14/06/2025</dia>
+    <hora>19:00</hora>
+    <cliente>sofia.vega@example.com</cliente>
+    <creador_pedido>Web</creador_pedido>
+    <metodo_pago>Tarjeta</metodo_pago>
+    <estatus>Confirmada</estatus>
+  </reservation>
+</reservations>

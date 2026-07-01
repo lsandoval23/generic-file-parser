@@ -5,7 +5,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.creati.sicloReservationsApi.exception.FileProcessingException;
-import org.creati.sicloReservationsApi.service.impl.ColumnMappingService;
+import org.creati.sicloReservationsApi.service.ColumnMappingService;
 import org.creati.sicloReservationsApi.service.model.parser.ParseRequest;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +14,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -24,14 +23,10 @@ import java.util.function.Consumer;
 
 @Slf4j
 @Service
-public class CsvFileParser implements FileParser {
-
-    private final ColumnMappingService columnMappingService;
-    private final RowMapper rowMapper;
+public class CsvFileParser extends AbstractFileParser {
 
     public CsvFileParser(ColumnMappingService columnMappingService, RowMapper rowMapper) {
-        this.columnMappingService = columnMappingService;
-        this.rowMapper = rowMapper;
+        super(columnMappingService, rowMapper);
     }
 
     @Override
@@ -47,7 +42,7 @@ public class CsvFileParser implements FileParser {
             int batchSize,
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
-        Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType(), request.extension());
+        Map<String, String> headerToFieldMap = headerToFieldMapping(request);
 
         CSVFormat format = CSVFormat.DEFAULT.builder()
                 .setHeader()
@@ -59,40 +54,20 @@ public class CsvFileParser implements FileParser {
         try (Reader reader = new FileReader(file, StandardCharsets.UTF_8);
              CSVParser csvParser = new CSVParser(reader, format)) {
 
-            Set<String> csvHeaders = new HashSet<>(csvParser.getHeaderNames());
-            if (!columnMappingService.validateRequiredHeaders(csvHeaders, request.fileType(), request.extension())) {
-                throw new IllegalArgumentException("Missing required headers in the CSV file.");
-            }
+            List<String> csvHeaders = csvParser.getHeaderNames();
+            validateRequiredHeaders(new HashSet<>(csvHeaders), request);
 
-            // Build mapping from CSV header name → DTO field name
-            Map<String, String> csvHeaderToField = new HashMap<>();
-            for (String csvHeader : csvParser.getHeaderNames()) {
-                String fieldName = headerToFieldMap.get(csvHeader);
-                if (fieldName != null) {
-                    csvHeaderToField.put(csvHeader, fieldName);
-                    log.debug("Mapped CSV header '{}' to field '{}'", csvHeader, fieldName);
-                } else {
-                    log.warn("No mapping found for CSV header '{}'", csvHeader);
-                }
-            }
-
-            List<T> batch = new ArrayList<>();
+            BatchAccumulator<T> batch = batchAccumulator(batchSize, batchProcessor);
             for (CSVRecord record : csvParser) {
-                Map<String, Object> rawRow = new HashMap<>();
-                for (Map.Entry<String, String> entry : csvHeaderToField.entrySet()) {
-                    String value = record.get(entry.getKey());
-                    rawRow.put(entry.getValue(), value.isEmpty() ? null : value);
+                Map<String, Object> sourceRecord = new HashMap<>();
+                for (String header : csvHeaders) {
+                    String value = record.get(header);
+                    sourceRecord.put(header, value.isEmpty() ? null : value);
                 }
+                Map<String, Object> rawRow = toFieldKeyedRow(sourceRecord, headerToFieldMap);
                 batch.add(rowMapper.map(rawRow, dtoClass));
-
-                if (batch.size() >= batchSize) {
-                    batchProcessor.accept(batch);
-                    batch.clear();
-                }
             }
-            if (!batch.isEmpty()) {
-                batchProcessor.accept(batch);
-            }
+            batch.flush();
         }
     }
 }

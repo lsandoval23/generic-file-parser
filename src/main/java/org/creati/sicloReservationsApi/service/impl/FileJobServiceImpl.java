@@ -7,7 +7,7 @@ import org.creati.sicloReservationsApi.service.FileJobService;
 import org.creati.sicloReservationsApi.service.model.job.FileJobCreateRequest;
 import org.creati.sicloReservationsApi.service.model.job.FileJobDto;
 import org.creati.sicloReservationsApi.service.model.job.FileJobUpdateRequest;
-import org.creati.sicloReservationsApi.service.model.reports.PagedResponse;
+import org.creati.sicloReservationsApi.service.model.common.PagedResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

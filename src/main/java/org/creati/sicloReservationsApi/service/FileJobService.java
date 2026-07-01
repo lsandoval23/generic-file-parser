@@ -4,7 +4,7 @@ import org.creati.sicloReservationsApi.dao.postgre.model.FileJob;
 import org.creati.sicloReservationsApi.service.model.job.FileJobCreateRequest;
 import org.creati.sicloReservationsApi.service.model.job.FileJobDto;
 import org.creati.sicloReservationsApi.service.model.job.FileJobUpdateRequest;
-import org.creati.sicloReservationsApi.service.model.reports.PagedResponse;
+import org.creati.sicloReservationsApi.service.model.common.PagedResponse;
 
 import java.time.LocalDate;
 import java.util.Optional;

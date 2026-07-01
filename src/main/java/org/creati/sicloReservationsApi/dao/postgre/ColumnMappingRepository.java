@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ExcelColumnMappingRepository extends BaseRepository<ColumnMapping, Long> {
+public interface ColumnMappingRepository extends BaseRepository<ColumnMapping, Long> {
     List<ColumnMapping> findByFileType(String fileType);
 
     List<ColumnMapping> findByFileTypeAndFileExtension(String fileType, String fileExtension);

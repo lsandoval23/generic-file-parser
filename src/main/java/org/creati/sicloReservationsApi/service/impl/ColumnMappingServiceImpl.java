@@ -2,8 +2,9 @@ package org.creati.sicloReservationsApi.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.creati.sicloReservationsApi.auth.exception.ResourceNotFoundException;
-import org.creati.sicloReservationsApi.dao.postgre.ExcelColumnMappingRepository;
+import org.creati.sicloReservationsApi.dao.postgre.ColumnMappingRepository;
 import org.creati.sicloReservationsApi.dao.postgre.model.ColumnMapping;
+import org.creati.sicloReservationsApi.service.ColumnMappingService;
 import org.creati.sicloReservationsApi.service.model.mapping.BulkUpdateColumnMappingRequest;
 import org.creati.sicloReservationsApi.service.model.mapping.ColumnMappingDto;
 import org.creati.sicloReservationsApi.service.model.job.ProcessingResult;
@@ -20,36 +21,40 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-public class ColumnMappingService {
+public class ColumnMappingServiceImpl implements ColumnMappingService {
 
-    private final ExcelColumnMappingRepository columnMappingRepository;
+    private final ColumnMappingRepository columnMappingRepository;
 
-    public ColumnMappingService(ExcelColumnMappingRepository columnMappingRepository) {
+    public ColumnMappingServiceImpl(ColumnMappingRepository columnMappingRepository) {
         this.columnMappingRepository = columnMappingRepository;
     }
 
 
+    @Override
     public List<ColumnMappingDto> getAllMappings() {
         return columnMappingRepository.findAll().stream()
                 .map(ColumnMapping::toDto)
                 .toList();
     }
 
+    @Override
     public List<ColumnMappingDto> getMappingsByFileType(String fileType) {
         return columnMappingRepository.findByFileType(fileType).stream()
                 .map(ColumnMapping::toDto)
                 .toList();
     }
 
+    @Override
     public ColumnMappingDto getMappingById(Long id) {
         return columnMappingRepository.findById(id)
                 .map(ColumnMapping::toDto)
-                .orElseThrow(() -> new ResourceNotFoundException("Excel column mapping not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Column mapping not found with id: " + id));
     }
 
+    @Override
     public ColumnMappingDto updateMapping(Long id, UpdateColumnMappingRequest updateRequest) {
         ColumnMapping existingMapping = columnMappingRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Excel column mapping not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Column mapping not found with id: " + id));
 
         ColumnMapping mappingModified = existingMapping.toBuilder()
                 .sourceField(updateRequest.getExcelHeader())
@@ -60,6 +65,7 @@ public class ColumnMappingService {
         return updatedMapping.toDto();
     }
 
+    @Override
     public ProcessingResult bulkUpdateMappings(List<BulkUpdateColumnMappingRequest> updateRequests) {
 
         int successCount = 0;
@@ -69,7 +75,7 @@ public class ColumnMappingService {
         for (BulkUpdateColumnMappingRequest request : updateRequests) {
             try {
                 ColumnMapping existingMapping = columnMappingRepository.findById(request.getMappingId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Excel column mapping not found with id: " + request.getMappingId()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Column mapping not found with id: " + request.getMappingId()));
 
                 ColumnMapping mappingModified = existingMapping.toBuilder()
                         .sourceField(request.getExcelHeader())
@@ -96,15 +102,16 @@ public class ColumnMappingService {
 
     }
 
+    @Override
     public Map<String, String> getHeaderToFieldMapping(String fileType, String fileExtension) {
         List<ColumnMapping> mappings = columnMappingRepository.findByFileTypeAndFileExtension(fileType, fileExtension);
         Map<String, String> headerToFieldMap = new HashMap<>();
 
         for (ColumnMapping mapping: mappings) {
-            String excelHeaderGroup = mapping.getSourceField();
+            String sourceFieldGroup = mapping.getSourceField();
             String fieldName = mapping.getFieldName();
 
-            String[] splitHeaders = excelHeaderGroup.split(";");
+            String[] splitHeaders = sourceFieldGroup.split(";");
             Arrays.stream(splitHeaders)
                     .map(String::trim)
                     .filter(header -> !header.isEmpty())
@@ -116,7 +123,8 @@ public class ColumnMappingService {
         return headerToFieldMap;
     }
 
-    public Boolean validateRequiredHeaders(Set<String> excelInputHeaders, String fileType, String fileExtension) {
+    @Override
+    public Boolean validateRequiredHeaders(Set<String> inputHeaders, String fileType, String fileExtension) {
 
         // Get required headers
         List<ColumnMapping> requiredMappings = columnMappingRepository.findByFileTypeAndFileExtension(fileType, fileExtension).stream()
@@ -124,17 +132,17 @@ public class ColumnMappingService {
                 .toList();
 
         // Normalized input headers
-        Set<String> normalizedExcelInputHeaders = excelInputHeaders.stream()
+        Set<String> normalizedInputHeaders = inputHeaders.stream()
                 .map(header -> header.toLowerCase().trim())
                 .collect(Collectors.toSet());
 
         List<String> missingHeaders = requiredMappings.stream()
                 .map(ColumnMapping::getSourceField)
-                .filter(excelHeader ->
-                        Arrays.stream(excelHeader.split(";"))
+                .filter(sourceField ->
+                        Arrays.stream(sourceField.split(";"))
                                 .map(String::trim)
                                 .map(String::toLowerCase)
-                                .noneMatch(normalizedExcelInputHeaders::contains))
+                                .noneMatch(normalizedInputHeaders::contains))
                 .toList();
 
         if (!missingHeaders.isEmpty()) {
@@ -144,6 +152,5 @@ public class ColumnMappingService {
 
         return true;
     }
-
 
 }

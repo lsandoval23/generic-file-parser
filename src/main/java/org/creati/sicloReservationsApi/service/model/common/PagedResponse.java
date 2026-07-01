@@ -1,4 +1,4 @@
-package org.creati.sicloReservationsApi.service.model.reports;
+package org.creati.sicloReservationsApi.service.model.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

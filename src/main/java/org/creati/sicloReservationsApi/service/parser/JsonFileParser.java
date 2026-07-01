@@ -5,14 +5,12 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.creati.sicloReservationsApi.exception.FileProcessingException;
-import org.creati.sicloReservationsApi.service.impl.ColumnMappingService;
+import org.creati.sicloReservationsApi.service.ColumnMappingService;
 import org.creati.sicloReservationsApi.service.model.parser.ParseRequest;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,10 +24,8 @@ import java.util.function.Consumer;
  */
 @Slf4j
 @Service
-public class JsonFileParser implements FileParser {
+public class JsonFileParser extends AbstractFileParser {
 
-    private final ColumnMappingService columnMappingService;
-    private final RowMapper rowMapper;
     private final ObjectMapper objectMapper;
     private final FileParserProperties fileParserProperties;
 
@@ -38,8 +34,7 @@ public class JsonFileParser implements FileParser {
             RowMapper rowMapper,
             ObjectMapper objectMapper,
             FileParserProperties fileParserProperties) {
-        this.columnMappingService = columnMappingService;
-        this.rowMapper = rowMapper;
+        super(columnMappingService, rowMapper);
         this.objectMapper = objectMapper;
         this.fileParserProperties = fileParserProperties;
     }
@@ -57,7 +52,7 @@ public class JsonFileParser implements FileParser {
             int batchSize,
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
-        Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType(), request.extension());
+        Map<String, String> headerToFieldMap = headerToFieldMapping(request);
         String locator = fileParserProperties.resolve(request.fileType(), request.extension());
         String[] pathSegments = locator != null
                 ? locator.split("\\.")
@@ -66,41 +61,22 @@ public class JsonFileParser implements FileParser {
         try (JsonParser jp = objectMapper.createParser(file)) {
             navigateToArray(jp, pathSegments);
 
-            // Collect headers from first object to validate required fields
-            // We do a two-pass approach only for validation: validate once, then stream
-            List<T> batch = new ArrayList<>();
+            // Validate required keys once, against the first object, then stream.
+            BatchAccumulator<T> batch = batchAccumulator(batchSize, batchProcessor);
             boolean headersValidated = false;
 
             while (jp.nextToken() == JsonToken.START_OBJECT) {
                 Map<String, Object> jsonRecord = objectMapper.readValue(jp, Map.class);
 
                 if (!headersValidated) {
-                    Set<String> jsonKeys = new HashSet<>(jsonRecord.keySet());
-                    if (!columnMappingService.validateRequiredHeaders(jsonKeys, request.fileType(), request.extension())) {
-                        throw new IllegalArgumentException("Missing required keys in the JSON file.");
-                    }
+                    validateRequiredHeaders(new HashSet<>(jsonRecord.keySet()), request);
                     headersValidated = true;
                 }
 
-                Map<String, Object> rawRow = new HashMap<>();
-                for (Map.Entry<String, Object> entry : jsonRecord.entrySet()) {
-                    String fieldName = headerToFieldMap.get(entry.getKey());
-                    if (fieldName != null) {
-                        rawRow.put(fieldName, entry.getValue());
-                    } else {
-                        log.debug("No mapping found for JSON key '{}'", entry.getKey());
-                    }
-                }
-
+                Map<String, Object> rawRow = toFieldKeyedRow(jsonRecord, headerToFieldMap);
                 batch.add(rowMapper.map(rawRow, dtoClass));
-                if (batch.size() >= batchSize) {
-                    batchProcessor.accept(batch);
-                    batch.clear();
-                }
             }
-            if (!batch.isEmpty()) {
-                batchProcessor.accept(batch);
-            }
+            batch.flush();
         }
     }
 

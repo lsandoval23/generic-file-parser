@@ -2,7 +2,7 @@ package org.creati.sicloReservationsApi.service.parser;
 
 import lombok.extern.slf4j.Slf4j;
 import org.creati.sicloReservationsApi.exception.FileProcessingException;
-import org.creati.sicloReservationsApi.service.impl.ColumnMappingService;
+import org.creati.sicloReservationsApi.service.ColumnMappingService;
 import org.creati.sicloReservationsApi.service.model.parser.ParseRequest;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +14,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,16 +29,13 @@ import java.util.function.Consumer;
  */
 @Slf4j
 @Service
-public class XmlFileParser implements FileParser {
+public class XmlFileParser extends AbstractFileParser {
 
-    private final ColumnMappingService columnMappingService;
-    private final RowMapper rowMapper;
     private final FileParserProperties fileParserProperties;
 
     public XmlFileParser(ColumnMappingService columnMappingService, RowMapper rowMapper,
                          FileParserProperties fileParserProperties) {
-        this.columnMappingService = columnMappingService;
-        this.rowMapper = rowMapper;
+        super(columnMappingService, rowMapper);
         this.fileParserProperties = fileParserProperties;
     }
 
@@ -56,7 +52,7 @@ public class XmlFileParser implements FileParser {
             int batchSize,
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
-        Map<String, String> headerToFieldMap = columnMappingService.getHeaderToFieldMapping(request.fileType(), request.extension());
+        Map<String, String> headerToFieldMap = headerToFieldMapping(request);
         String recordElement = fileParserProperties.resolve(request.fileType(), request.extension());
 
         XMLInputFactory factory = XMLInputFactory.newInstance();
@@ -67,7 +63,7 @@ public class XmlFileParser implements FileParser {
         try (InputStream is = new FileInputStream(file)) {
             XMLStreamReader reader = factory.createXMLStreamReader(is);
 
-            List<T> batch = new ArrayList<>();
+            BatchAccumulator<T> batch = batchAccumulator(batchSize, batchProcessor);
             boolean headersValidated = false;
             boolean inRecord = false;
             String currentElement = null;
@@ -102,7 +98,6 @@ public class XmlFileParser implements FileParser {
                         }
                     }
                     case XMLStreamConstants.END_ELEMENT -> {
-                        String localName = reader.getLocalName();
                         if (inRecord && depth == recordDepth + 1) {
                             currentElement = null;
                         }
@@ -110,27 +105,12 @@ public class XmlFileParser implements FileParser {
                             // End of record element — map it
                             if (currentRecord != null && !currentRecord.isEmpty()) {
                                 if (!headersValidated) {
-                                    Set<String> xmlKeys = new HashSet<>(currentRecord.keySet());
-                                    if (!columnMappingService.validateRequiredHeaders(xmlKeys, request.fileType(), request.extension())) {
-                                        throw new IllegalArgumentException("Missing required elements in the XML file.");
-                                    }
+                                    validateRequiredHeaders(new HashSet<>(currentRecord.keySet()), request);
                                     headersValidated = true;
                                 }
 
-                                Map<String, Object> rawRow = new HashMap<>();
-                                for (Map.Entry<String, Object> entry : currentRecord.entrySet()) {
-                                    String fieldName = headerToFieldMap.get(entry.getKey());
-                                    if (fieldName != null) {
-                                        rawRow.put(fieldName, entry.getValue());
-                                    } else {
-                                        log.debug("No mapping found for XML element '{}'", entry.getKey());
-                                    }
-                                }
+                                Map<String, Object> rawRow = toFieldKeyedRow(currentRecord, headerToFieldMap);
                                 batch.add(rowMapper.map(rawRow, dtoClass));
-                                if (batch.size() >= batchSize) {
-                                    batchProcessor.accept(batch);
-                                    batch.clear();
-                                }
                             }
                             inRecord = false;
                             currentRecord = null;
@@ -143,9 +123,7 @@ public class XmlFileParser implements FileParser {
             }
             reader.close();
 
-            if (!batch.isEmpty()) {
-                batchProcessor.accept(batch);
-            }
+            batch.flush();
 
         } catch (XMLStreamException e) {
             throw new FileProcessingException("Error parsing XML file: " + e.getMessage(), e);

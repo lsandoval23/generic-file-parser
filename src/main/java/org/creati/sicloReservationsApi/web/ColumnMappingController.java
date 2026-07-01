@@ -1,7 +1,7 @@
 package org.creati.sicloReservationsApi.web;
 
 import jakarta.validation.Valid;
-import org.creati.sicloReservationsApi.service.impl.ColumnMappingService;
+import org.creati.sicloReservationsApi.service.ColumnMappingService;
 import org.creati.sicloReservationsApi.service.model.mapping.BulkUpdateColumnMappingRequest;
 import org.creati.sicloReservationsApi.service.model.mapping.ColumnMappingDto;
 import org.creati.sicloReservationsApi.service.model.job.ProcessingResult;

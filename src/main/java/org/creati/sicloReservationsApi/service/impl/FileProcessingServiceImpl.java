@@ -21,7 +21,6 @@ import org.creati.sicloReservationsApi.service.model.parser.ParseRequest;
 import org.creati.sicloReservationsApi.service.util.FileUtils;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,7 +56,6 @@ public class FileProcessingServiceImpl implements FileProcessingService {
 
     @Override
     @Async
-    @Transactional
     public void processFile(File fileData, Long jobId, FileType fileType) {
         log.info("Starting processing file: {} of type {} with jobId: {}", fileData.getName(), fileType, jobId);
 

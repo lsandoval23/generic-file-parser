@@ -10,7 +10,7 @@ import org.creati.sicloReservationsApi.service.util.FileUtils;
 import org.creati.sicloReservationsApi.service.model.job.FileJobCreateRequest;
 import org.creati.sicloReservationsApi.service.model.job.FileJobDto;
 import org.creati.sicloReservationsApi.service.model.job.FileType;
-import org.creati.sicloReservationsApi.service.model.reports.PagedResponse;
+import org.creati.sicloReservationsApi.service.model.common.PagedResponse;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
