@@ -73,8 +73,11 @@ public class FileProcessingServiceImpl implements FileProcessingService {
             FileParser parser = fileParserFactory.forExtension(extension);
             ParseRequest parseRequest = new ParseRequest(fileType.name(), extension);
 
-            parser.parse(fileData, parseRequest, strategy.dtoClass(), MAX_ITEMS_IN_BATCH,
+            ProcessingResult mappingResult = parser.parse(fileData, parseRequest, strategy.dtoClass(), MAX_ITEMS_IN_BATCH,
                     (batch) -> strategy.persist(batch, batchResults));
+            // Fold rows that failed to map (skipped, not fatal) into the aggregate
+            // alongside the per-batch persistence results.
+            batchResults.add(mappingResult);
 
             ProcessingResult batchProcessingResult = ProcessingResult.builder()
                     .success(batchResults.stream().allMatch(ProcessingResult::isSuccess))

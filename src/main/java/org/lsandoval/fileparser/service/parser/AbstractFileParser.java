@@ -2,8 +2,10 @@ package org.lsandoval.fileparser.service.parser;
 
 import lombok.extern.slf4j.Slf4j;
 import org.lsandoval.fileparser.service.ColumnMappingService;
+import org.lsandoval.fileparser.service.model.job.ProcessingResult;
 import org.lsandoval.fileparser.service.model.parser.ParseRequest;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,11 +48,16 @@ public abstract class AbstractFileParser implements FileParser {
     /**
      * Translates a source-keyed record (source header → raw value) into a
      * DTO-field-keyed row, dropping any header that has no configured mapping.
+     * <p>
+     * Header lookup is case-insensitive to stay consistent with the
+     * case-insensitive required-header validation in {@code ColumnMappingService};
+     * otherwise a file could pass validation yet silently lose a column whose
+     * casing differs from the stored {@code source_field}.
      */
     protected Map<String, Object> toFieldKeyedRow(Map<String, Object> sourceRecord, Map<String, String> headerToField) {
         Map<String, Object> rawRow = new HashMap<>();
         for (Map.Entry<String, Object> entry : sourceRecord.entrySet()) {
-            String fieldName = headerToField.get(entry.getKey());
+            String fieldName = headerToField.get(normalizeHeader(entry.getKey()));
             if (fieldName != null) {
                 rawRow.put(fieldName, entry.getValue());
             } else {
@@ -58,6 +65,35 @@ public abstract class AbstractFileParser implements FileParser {
             }
         }
         return rawRow;
+    }
+
+    /**
+     * Normalizes a source header for lookup against the header→field map.
+     * Must mirror how {@code ColumnMappingService.getHeaderToFieldMapping} keys
+     * that map (lower-cased, trimmed).
+     */
+    protected static String normalizeHeader(String header) {
+        return header == null ? null : header.toLowerCase().trim();
+    }
+
+    /**
+     * Maps a field-keyed row onto a DTO and adds it to the batch. A row that
+     * fails to map is recorded in {@code errors} and skipped instead of aborting
+     * the whole file — mirroring the per-row error handling on the persistence
+     * side. Batch flush (persistence) errors are left to propagate.
+     */
+    protected <T> void mapAndAccumulate(
+            Map<String, Object> rawRow, Class<T> dtoClass, BatchAccumulator<T> batch, MappingErrors errors) {
+        int row = errors.nextRow();
+        T dto;
+        try {
+            dto = rowMapper.map(rawRow, dtoClass);
+        } catch (RuntimeException e) {
+            errors.record(row, e);
+            log.warn("Skipping unmappable row {}: {}", row, e.getMessage());
+            return;
+        }
+        batch.add(dto);
     }
 
     protected <T> BatchAccumulator<T> batchAccumulator(int batchSize, Consumer<List<T>> batchProcessor) {
@@ -90,6 +126,49 @@ public abstract class AbstractFileParser implements FileParser {
                 batchProcessor.accept(batch);
                 batch.clear();
             }
+        }
+    }
+
+    /**
+     * Accumulates per-row mapping failures during a parse so they can be folded
+     * into the job's {@link ProcessingResult} exactly like persistence failures,
+     * instead of aborting the whole file. The retained message list is capped to
+     * avoid unbounded memory/DB growth on pathological input.
+     */
+    protected static final class MappingErrors {
+        private static final int MAX_RETAINED_MESSAGES = 100;
+
+        private int rowNumber = 0;
+        private int failureCount = 0;
+        private final List<String> messages = new ArrayList<>();
+
+        /** Advances to the next row and returns its 1-based number. */
+        public int nextRow() {
+            return ++rowNumber;
+        }
+
+        public void record(int row, Exception e) {
+            failureCount++;
+            if (messages.size() < MAX_RETAINED_MESSAGES) {
+                messages.add(String.format("Error mapping row %d: %s", row, e.getMessage()));
+            }
+        }
+
+        /**
+         * A {@link ProcessingResult} representing only the mapping-phase failures.
+         * Successfully mapped rows are counted later by the persistence phase, so
+         * they are deliberately excluded here to avoid double counting when the
+         * batch results are aggregated.
+         */
+        public ProcessingResult toProcessingResult() {
+            return ProcessingResult.builder()
+                    .success(failureCount == 0)
+                    .totalProcessed(failureCount)
+                    .successCount(0)
+                    .failureCount(failureCount)
+                    .skipped(0)
+                    .errors(messages)
+                    .build();
         }
     }
 }
