@@ -1,5 +1,6 @@
 package org.lsandoval.fileparser.service.parser;
 
+import org.lsandoval.fileparser.service.model.job.ProcessingResult;
 import org.lsandoval.fileparser.service.model.parser.ParseRequest;
 import org.junit.jupiter.api.Test;
 
@@ -29,9 +30,10 @@ class BatchAccumulatorTest {
         }
 
         @Override
-        public <T> void parse(File file, ParseRequest request, Class<T> dtoClass,
-                              int batchSize, Consumer<List<T>> batchProcessor) {
+        public <T> ProcessingResult parse(File file, ParseRequest request, Class<T> dtoClass,
+                                          int batchSize, Consumer<List<T>> batchProcessor) {
             // not used in this test
+            return ProcessingResult.builder().build();
         }
     }
 

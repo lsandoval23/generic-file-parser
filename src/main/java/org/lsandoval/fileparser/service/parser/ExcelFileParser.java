@@ -1,6 +1,6 @@
 package org.lsandoval.fileparser.service.parser;
 
-import com.monitorjbl.xlsx.StreamingReader;
+import com.github.pjfanning.xlsx.StreamingReader;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -10,6 +10,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.lsandoval.fileparser.exception.FileProcessingException;
 import org.lsandoval.fileparser.service.ColumnMappingService;
+import org.lsandoval.fileparser.service.model.job.ProcessingResult;
 import org.lsandoval.fileparser.service.model.parser.ParseRequest;
 import org.springframework.stereotype.Service;
 
@@ -44,13 +45,14 @@ public class ExcelFileParser extends AbstractFileParser {
     }
 
     @Override
-    public <T> void parse(
+    public <T> ProcessingResult parse(
             File file,
             ParseRequest request,
             Class<T> dtoClass,
             int batchSize,
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
+        MappingErrors mappingErrors = new MappingErrors();
         try (Workbook workbook = createStreamingWorkbook(file)) {
             Map<String, String> headerToFieldMap = headerToFieldMapping(request);
 
@@ -73,7 +75,7 @@ public class ExcelFileParser extends AbstractFileParser {
             Map<Integer, String> columnIndexToField = new HashMap<>();
             for (Cell cell : headerRow) {
                 String headerValue = getCellStringValue(cell);
-                String fieldName = headerToFieldMap.get(headerValue);
+                String fieldName = headerToFieldMap.get(normalizeHeader(headerValue));
                 if (fieldName != null) {
                     columnIndexToField.put(cell.getColumnIndex(), fieldName);
                     log.debug("Mapped column {} '{}' to field '{}'", cell.getColumnIndex(), headerValue, fieldName);
@@ -88,10 +90,11 @@ public class ExcelFileParser extends AbstractFileParser {
                 if (row == null || isEmptyRow(row)) continue;
 
                 Map<String, Object> rawRow = extractRow(row, columnIndexToField);
-                batch.add(rowMapper.map(rawRow, dtoClass));
+                mapAndAccumulate(rawRow, dtoClass, batch, mappingErrors);
             }
             batch.flush();
         }
+        return mappingErrors.toProcessingResult();
     }
 
     private Map<String, Object> extractRow(Row row, Map<Integer, String> columnIndexToField) {

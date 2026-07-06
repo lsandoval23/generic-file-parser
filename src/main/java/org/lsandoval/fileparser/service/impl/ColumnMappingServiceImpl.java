@@ -115,7 +115,9 @@ public class ColumnMappingServiceImpl implements ColumnMappingService {
             Arrays.stream(splitHeaders)
                     .map(String::trim)
                     .filter(header -> !header.isEmpty())
-                    .forEach(header -> headerToFieldMap.put(header, fieldName));
+                    // Key case-insensitively so mapping matches the case-insensitive
+                    // required-header validation below; parsers normalize lookups the same way.
+                    .forEach(header -> headerToFieldMap.put(header.toLowerCase(), fieldName));
 
         }
 

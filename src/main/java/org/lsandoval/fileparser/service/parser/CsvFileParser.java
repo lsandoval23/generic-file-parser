@@ -6,6 +6,7 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.lsandoval.fileparser.exception.FileProcessingException;
 import org.lsandoval.fileparser.service.ColumnMappingService;
+import org.lsandoval.fileparser.service.model.job.ProcessingResult;
 import org.lsandoval.fileparser.service.model.parser.ParseRequest;
 import org.springframework.stereotype.Service;
 
@@ -35,7 +36,7 @@ public class CsvFileParser extends AbstractFileParser {
     }
 
     @Override
-    public <T> void parse(
+    public <T> ProcessingResult parse(
             File file,
             ParseRequest request,
             Class<T> dtoClass,
@@ -43,6 +44,7 @@ public class CsvFileParser extends AbstractFileParser {
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
         Map<String, String> headerToFieldMap = headerToFieldMapping(request);
+        MappingErrors mappingErrors = new MappingErrors();
 
         CSVFormat format = CSVFormat.DEFAULT.builder()
                 .setHeader()
@@ -65,9 +67,10 @@ public class CsvFileParser extends AbstractFileParser {
                     sourceRecord.put(header, value.isEmpty() ? null : value);
                 }
                 Map<String, Object> rawRow = toFieldKeyedRow(sourceRecord, headerToFieldMap);
-                batch.add(rowMapper.map(rawRow, dtoClass));
+                mapAndAccumulate(rawRow, dtoClass, batch, mappingErrors);
             }
             batch.flush();
         }
+        return mappingErrors.toProcessingResult();
     }
 }

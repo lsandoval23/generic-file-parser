@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.lsandoval.fileparser.exception.FileProcessingException;
 import org.lsandoval.fileparser.service.ColumnMappingService;
+import org.lsandoval.fileparser.service.model.job.ProcessingResult;
 import org.lsandoval.fileparser.service.model.parser.ParseRequest;
 import org.springframework.stereotype.Service;
 
@@ -45,7 +46,7 @@ public class JsonFileParser extends AbstractFileParser {
     }
 
     @Override
-    public <T> void parse(
+    public <T> ProcessingResult parse(
             File file,
             ParseRequest request,
             Class<T> dtoClass,
@@ -53,6 +54,7 @@ public class JsonFileParser extends AbstractFileParser {
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
         Map<String, String> headerToFieldMap = headerToFieldMapping(request);
+        MappingErrors mappingErrors = new MappingErrors();
         String locator = fileParserProperties.resolve(request.fileType(), request.extension());
         String[] pathSegments = locator != null
                 ? locator.split("\\.")
@@ -74,10 +76,11 @@ public class JsonFileParser extends AbstractFileParser {
                 }
 
                 Map<String, Object> rawRow = toFieldKeyedRow(jsonRecord, headerToFieldMap);
-                batch.add(rowMapper.map(rawRow, dtoClass));
+                mapAndAccumulate(rawRow, dtoClass, batch, mappingErrors);
             }
             batch.flush();
         }
+        return mappingErrors.toProcessingResult();
     }
 
     private void navigateToArray(JsonParser jp, String[] pathSegments) throws IOException {

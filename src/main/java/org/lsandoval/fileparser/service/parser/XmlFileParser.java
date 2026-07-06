@@ -3,6 +3,7 @@ package org.lsandoval.fileparser.service.parser;
 import lombok.extern.slf4j.Slf4j;
 import org.lsandoval.fileparser.exception.FileProcessingException;
 import org.lsandoval.fileparser.service.ColumnMappingService;
+import org.lsandoval.fileparser.service.model.job.ProcessingResult;
 import org.lsandoval.fileparser.service.model.parser.ParseRequest;
 import org.springframework.stereotype.Service;
 
@@ -45,7 +46,7 @@ public class XmlFileParser extends AbstractFileParser {
     }
 
     @Override
-    public <T> void parse(
+    public <T> ProcessingResult parse(
             File file,
             ParseRequest request,
             Class<T> dtoClass,
@@ -53,6 +54,7 @@ public class XmlFileParser extends AbstractFileParser {
             Consumer<List<T>> batchProcessor) throws IOException, FileProcessingException {
 
         Map<String, String> headerToFieldMap = headerToFieldMapping(request);
+        MappingErrors mappingErrors = new MappingErrors();
         String recordElement = fileParserProperties.resolve(request.fileType(), request.extension());
 
         XMLInputFactory factory = XMLInputFactory.newInstance();
@@ -110,7 +112,7 @@ public class XmlFileParser extends AbstractFileParser {
                                 }
 
                                 Map<String, Object> rawRow = toFieldKeyedRow(currentRecord, headerToFieldMap);
-                                batch.add(rowMapper.map(rawRow, dtoClass));
+                                mapAndAccumulate(rawRow, dtoClass, batch, mappingErrors);
                             }
                             inRecord = false;
                             currentRecord = null;
@@ -128,5 +130,6 @@ public class XmlFileParser extends AbstractFileParser {
         } catch (XMLStreamException e) {
             throw new FileProcessingException("Error parsing XML file: " + e.getMessage(), e);
         }
+        return mappingErrors.toProcessingResult();
     }
 }

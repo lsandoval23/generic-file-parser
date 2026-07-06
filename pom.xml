@@ -75,21 +75,22 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Apache POI for Excel -->
+		<!-- Apache POI for Excel (kept in lockstep with excel-streaming-reader below) -->
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi</artifactId>
-			<version>4.1.2</version>
+			<version>5.5.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
-			<version>4.1.2</version>
+			<version>5.5.1</version>
 		</dependency>
+		<!-- Maintained fork of the abandoned com.monitorjbl:xlsx-streamer; targets POI 5.x -->
 		<dependency>
-			<groupId>com.monitorjbl</groupId>
-			<artifactId>xlsx-streamer</artifactId>
-			<version>2.2.0</version>
+			<groupId>com.github.pjfanning</groupId>
+			<artifactId>excel-streaming-reader</artifactId>
+			<version>5.2.0</version>
 		</dependency>
 
 		<!-- CSV parsing -->
